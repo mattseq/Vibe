@@ -1,0 +1,94 @@
+@import './main.css';
+
+.login-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--background-main);
+    color: var(--text-main);
+}
+
+.login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.login-header p {
+    max-width: 600px;
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+}
+
+.login-container h2 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--accent);
+}
+
+.login-container form {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: var(--background-card);
+    border-radius: 8px;
+    box-shadow: 0px 0px 20px var(--background-alt);
+    align-items: center;
+    border: 1px solid var(--border);
+}
+
+.login-input {
+    height: 50px;
+    width: 400px;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 24px;
+    background: var(--background-alt);
+    color: var(--text-main);
+    transition: border 0.2s, background 0.2s;
+}
+
+.login-input:focus {
+    outline: none;
+    border: 2px solid var(--accent);
+    background: var(--background-card);
+}
+
+.login-button, .create-account-button {
+    padding: 12px 20px;
+    background-color: var(--accent);
+    color: var(--background-main);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.15);
+    font-size: 24px;
+    margin: 10px;
+    width: 100%;
+}
+
+.login-button:hover, .create-account-button:hover {
+    background-color: var(--accent-hover);
+    color: var(--text-main);
+    transform: scale(1.05);
+    box-shadow: 0 6px 14px rgba(46, 204, 113, 0.22);
+}
+
+.login-gif {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 20px var(--background-alt);
+}

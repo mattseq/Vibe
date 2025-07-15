@@ -1,0 +1,5 @@
+Welcome to **V!be**, the chat app where every conversation is a GIF—and only a GIF. It’s not just messaging; it’s a whole new language where your skill at picking the perfect animation makes all the difference. Will your friend get your vibe, or will your GIF miss the mark and spark confusion? That’s part of the fun.
+
+V!be turns chatting into an art form — where wit, timing, and a little creativity are your best tools. Every reaction, every joke, every moment depends on your GIF game. Misunderstandings? Absolutely. But they only add to the laughter and spontaneity.
+
+If you think you can master the flow, if you love humor, surprises, and making conversations come alive, then V!be is your new playground. Say goodbye to boring text and hello to a world that’s all about skill, creativity, and vibe.

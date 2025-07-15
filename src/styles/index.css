@@ -1,0 +1,47 @@
+@import './main.css';
+
+.index-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: var(--background-main);
+    color: var(--text-main);
+}
+
+.chat-list {
+    width: 300px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--background-card);
+    border-right: 1px solid var(--border);
+}
+
+.chat-window {
+    flex: 1;
+    padding: 20px;
+    background-color: var(--background-alt);
+    color: var(--text-main);
+}
+
+.logout-button {
+    padding: 12px 20px;
+    background-color: var(--accent);
+    color: var(--background-main);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.15);
+    font-size: 24px;
+    margin: 10px;
+}
+
+.logout-button:hover {
+    background-color: var(--accent-hover);
+    color: var(--text-main);
+    transform: scale(1.05);
+    box-shadow: 0 6px 14px rgba(46, 204, 113, 0.22);
+}
