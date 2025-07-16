@@ -1,6 +1,7 @@
 import React from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import { motion, scale } from "framer-motion";
 
 import './styles/Index.css';
 
@@ -9,9 +10,9 @@ export default function Index() {
     <div className="index-container">
       {/* <h1>Welcome to V!be — Main Page</h1> */}
       <div className="chat-list">
-        <h2>Chat List</h2>
+        <h2>Chat Rooms</h2>
         {/* Here you can map through your chat list and display them */}
-        <ul>
+        <ul className="chat-list-items">
           <li>Chat 1</li>
           <li>Chat 2</li>
           <li>Chat 3</li>
@@ -19,15 +20,13 @@ export default function Index() {
         <LogoutButton />
       </div>
       <div className="chat-window">
-        <h2>Chat Window</h2>
         {/* This is where the chat messages will be displayed */}
-        <div className="messages">
-          <p>Message 1</p>
-          <p>Message 2</p>
-          <p>Message 3</p>
-        </div>
-        {/* Input for sending new messages */}
-        <input type="text" placeholder="Type a message..." />
+          <div className="messages">
+            <ol className="message-list">
+              <li>Message 1</li>
+              <li>Message 2</li>
+            </ol>
+          </div>
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "./firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "./firebase";
+import { motion, spring } from "framer-motion";
 
 import './styles/Login.css'
 
@@ -24,21 +26,37 @@ export default function Login() {
     <>
         
         <div className="login-container">
-            <div className="login-header">
-                <h2>V!be</h2>
-                <p>V!be is a chat app where every message is a GIF — no text allowed. 
+            <div className="login-header" >
+                <motion.h2
+                  initial={{ y: -100 }}
+                  animate={{ y: 0 }}
+                  transition={{ type: spring, stiffness: 100, bounce: 0.2, duration: 0.5 }}
+                >V!be</motion.h2>
+                <motion.p
+                  initial={{ opacity: 0, x: -50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                >V!be is a chat app where every message is a GIF — no text allowed. 
                   It turns conversations into a creative game of wit and timing, where picking the perfect animation is the key to getting your message across. 
-                  Ready to speak a whole new language? V!be is your playground.</p>
-                <img className="login-gif" src="https://tenor.com/view/talk-with-gifs-gif-20291278.gif" alt="only GIFs" />
+                  Ready to speak a whole new language? V!be is your playground.</motion.p>
+                <motion.img className="login-gif" src="https://tenor.com/view/talk-with-gifs-gif-20291278.gif" alt="only GIFs" 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5, delay: 1 }}
+                />
             </div>
-            <h2></h2>
-            <form onSubmit={handleLogin}>
+            <motion.form 
+              onSubmit={handleLogin}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{type: spring, stiffness: 200, bounce: 0.1, duration: 0.5, delay: 3.75 }}
+            >
                 <input className="login-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 <input className="login-input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 <button className="login-button" type="submit">Log In</button>
                 <button className="create-account-button" type="createAccount">Create new account</button>
                 {error && <p style={{ color: "red" }}>{error}</p>}
-            </form>
+            </motion.form>
         </div>
     </>
   )
