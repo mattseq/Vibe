@@ -39,7 +39,7 @@ export default function Login() {
       lastActive: serverTimestamp()
     });
 
-    console.log("✅ Account created and Firestore profile added.");
+    console.log("Account created and Firestore profile added.");
   } catch (err) {
     setError(err.message);
   }

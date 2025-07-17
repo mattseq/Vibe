@@ -1,6 +1,6 @@
 import { React, useEffect, useState} from "react";
 import { signOut } from "firebase/auth";
-import { doc, updateDoc, serverTimestamp, collection, query, where, onSnapshot  } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot  } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { motion, scale } from "framer-motion";
 
@@ -11,15 +11,12 @@ export default function Index() {
 
   return (
     <div className="index-container">
-      {/* <h1>Welcome to V!be — Main Page</h1> */}
       <div className="chat-list">
         <h2>Chat Rooms</h2>
-        {/* Here you can map through your chat list and display them */}
         <ChatroomList onSelect={setCurrentRoomId} />
         <LogoutButton />
       </div>
       <div className="chat-window">
-        {/* This is where the chat messages will be displayed */}
           <div className="messages">
             <ol className="message-list">
               <li>Message 1</li>
@@ -33,6 +30,7 @@ export default function Index() {
 
 function ChatroomList({ onSelect }) {
   const [chatrooms, setChatrooms] = useState([]);
+  const [usernames, setUsernames] = useState({});
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -43,13 +41,39 @@ function ChatroomList({ onSelect }) {
       where("participants", "array-contains", user.uid)
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       const rooms = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setChatrooms(rooms);
       console.log("Fetched rooms:", rooms);
+      
+      // extract user IDs from all chatrooms
+      const participantIds = new Set();
+      rooms.forEach(room => {
+        room.participants.forEach(id => participantIds.add(id));
+      });
+
+      // convert set to array
+      const allUserIds = Array.from(participantIds);
+
+      // fetch each user’s displayName if not already loaded
+      const newUsernames = { ...usernames };
+      
+      await Promise.all(
+        allUserIds.map(async (userId) => {
+          if (!newUsernames[userId]) {
+            const userRef = doc(db, "users", userId);
+            const userSnap = await getDoc(userRef);
+            newUsernames[userId] = userSnap.exists()
+              ? userSnap.data().displayName
+              : "Unknown User";
+          }
+        })
+      );
+
+      setUsernames(newUsernames);
     });
 
     return () => unsubscribe();
@@ -67,7 +91,14 @@ function ChatroomList({ onSelect }) {
           transition={{ type: "spring", stiffness: 300, bounce: 0.2 }}
         >
           <h3>{room.chatName || "Unnamed Chat"}</h3>
-          <p>Participants: {room.participants?.length || 0}</p>
+          <p>{room.participants
+            .filter(id => id !== auth.currentUser.uid)
+            .map((id, i) => (
+              <span key={id}>
+                {usernames[id] || "Loading..."}
+                {i < room.participants.length - 2 ? ", " : ""}
+              </span>
+          ))}</p>
         </motion.div>
       ))}
     </div>
@@ -84,7 +115,6 @@ function LogoutButton() {
         lastActive: serverTimestamp()
       });
 
-      // You can also redirect to login page here if you want
     } catch (error) {
       console.error("Logout failed:", error);
     }

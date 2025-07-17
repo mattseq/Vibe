@@ -27,29 +27,17 @@
 }
 
 .chatroom-card {
-    padding: 10px;
+    padding-left: 10px;
     border: 2px solid var(--border);
     cursor: pointer;
     border-radius: 20px;
+    
 }
 
 .chatroom-card:hover {
     background-color: var(--background-alt);
     border: 2px solid var(--accent);
 }
-
-/* .chatroom-card {
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.chatroom-card:hover {
-  background-color: #f1f1f1;
-} */
 
 
 .chat-window {
