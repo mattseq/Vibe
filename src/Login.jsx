@@ -21,6 +21,29 @@ export default function Login() {
       setError(err.message);
     }
   };
+  
+
+  const handleSignUp = async () => {
+  setError("");
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Create Firestore user document
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      displayName: "",          // Optional: ask for this later
+      bio: "",
+      createdAt: serverTimestamp(),
+      lastActive: serverTimestamp()
+    });
+
+    console.log("✅ Account created and Firestore profile added.");
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   return (
     <>
@@ -54,7 +77,7 @@ export default function Login() {
                 <input className="login-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 <input className="login-input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 <button className="login-button" type="submit">Log In</button>
-                <button className="create-account-button" type="createAccount">Create new account</button>
+                <button className="create-account-button" type="button" onClick={handleSignUp}>Create new account</button>
                 {error && <p style={{ color: "red" }}>{error}</p>}
             </motion.form>
         </div>
