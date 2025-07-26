@@ -1,6 +1,6 @@
 import { React, useEffect, useState} from "react";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot  } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { motion, scale } from "framer-motion";
 
@@ -17,12 +17,9 @@ export default function Index() {
         <LogoutButton />
       </div>
       <div className="chat-window">
-          <div className="messages">
-            <ol className="message-list">
-              <li>Message 1</li>
-              <li>Message 2</li>
-            </ol>
-          </div>
+          <ChatMessages roomId={currentRoomId} />
+          
+          <div>{/* For the GIF selector */}</div>
       </div>
     </div>
   );
@@ -105,6 +102,55 @@ function ChatroomList({ onSelect }) {
   );
 }
 
+function ChatMessages({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [names, setNames] = useState({});
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    let unsubscribe;
+    try {
+      const q = query(
+        collection(db, "chatRooms", roomId, "messages"),
+        orderBy("timestamp")
+      );
+
+      unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const msgs = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setMessages(msgs);
+
+        // Get all unique senderIds
+        const senderIds = [...new Set(msgs.map(m => m.senderId).filter(Boolean))];
+        // Fetch display names
+        getDisplayNames(senderIds).then(setNames);
+      });
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [roomId]);
+
+  if (!roomId) {
+    return <div className="no-room-selected">Select a chat room to see messages</div>;
+  }
+
+  return (
+    <ol className="message-list">
+      {messages.map((msg) => (
+        <li key={msg.id}>
+          <strong>{names[msg.senderId] || "Unknown"} </strong> <img className="gif-message" src={msg.gifUrl} />
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function LogoutButton() {
   const handleLogout = async () => {
@@ -121,4 +167,25 @@ function LogoutButton() {
   };
 
   return <button className="logout-button" onClick={handleLogout}>Log Out</button>;
+}
+
+async function getDisplayNames(userIds) {
+  const ids = Array.isArray(userIds) ? userIds : [userIds];
+  const results = {};
+
+  await Promise.all(
+    ids.map(async (userId) => {
+      try {
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        results[userId] = userSnap.exists()
+          ? userSnap.data().displayName
+          : "Unknown User";
+      } catch {
+        results[userId] = "Unknown User";
+      }
+    })
+  );
+
+  return results;
 }
