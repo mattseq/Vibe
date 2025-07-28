@@ -141,11 +141,13 @@ function ChatMessages({ roomId }) {
     return <div className="no-room-selected">Select a chat room to see messages</div>;
   }
 
+  const currentUserId = auth.currentUser?.uid;
+
   return (
     <ol className="message-list">
       {messages.map((msg) => (
-        <li key={msg.id}>
-          <strong>{names[msg.senderId] || "Unknown"} </strong> <img className="gif-message" src={msg.gifUrl} />
+        <li key={msg.id} className={`message-item ${msg.senderId === currentUserId ? "mine" : "theirs"}`}>
+          <strong>{names[msg.senderId] || "Unknown User"} </strong> <img className="gif-message" src={msg.gifUrl} />
         </li>
       ))}
     </ol>
