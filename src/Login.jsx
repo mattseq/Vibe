@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -72,7 +72,7 @@ export default function Login() {
               onSubmit={handleLogin}
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{type: spring, stiffness: 200, bounce: 0.1, duration: 0.5, delay: 3.75 }}
+              transition={{type: spring, stiffness: 200, bounce: 0.1, duration: 0.5, delay: 1.5 }}
             >
                 <input className="login-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 <input className="login-input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />

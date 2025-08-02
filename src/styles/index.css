@@ -2,105 +2,345 @@
 
 .index-container {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
     height: 100vh;
-    background-color: var(--background-main);
+    background: linear-gradient(135deg, var(--background-main) 0%, var(--background-card) 100%);
     color: var(--text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.chat-list {
-    width: 300px;
+.sidebar {
+    width: 320px;
     height: 100%;
-    overflow-y: auto;
-    background-color: var(--background-card);
+    background: var(--background-card);
     border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 10px var(--shadow);
+}
+
+.header {
+    padding: 24px 20px 16px;
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--background-card);
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--glow);
+}
+
+.header button {
+    flex-grow: 0;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--glow);
+    background-color: var(--accent);
+    border: none;
+    color: var(--text-main);
+    font-size: 1.25rem;
+}
+
+.header button:hover {
+    background-color: var(--accent-hover);
 }
 
 .chatroom-list {
     display: flex;
     flex-direction: column;
-    list-style: none;
-    padding: 10px;
-    gap: 10px;
+    padding: 16px;
+    gap: 12px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .chatroom-card {
-    padding-left: 10px;
-    border: 2px solid var(--border);
+    padding: 16px;
+    background: var(--background-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     cursor: pointer;
-    border-radius: 20px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px var(--shadow);
 }
 
 .chatroom-card:hover {
-    background-color: var(--background-alt);
-    border: 2px solid var(--accent);
+    background: var(--background-card);
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px var(--shadow-hover), 0 0 20px var(--glow);
+}
+
+.chatroom-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.chatroom-card p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.logout-button {
+    margin: 16px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: var(--background-main);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px var(--shadow), 0 0 20px var(--glow);
+}
+
+.logout-button:hover {
+    box-shadow: 0 6px 16px var(--shadow-hover), 0 0 30px var(--glow);
 }
 
 .chat-window {
     display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    flex-direction: column;
     flex: 1;
-    background-color: var(--background-alt);
-    color: var(--text-main);
-    height: 100%;
-    overflow-x: auto;
-    box-sizing: border-box;
+    background: var(--background-card);
+    position: relative;
+    overflow: hidden;
+    min-height: 400px;
 }
 
 .message-list {
     display: flex;
     flex-direction: row;
-    gap: 10px;
-    padding: 20px;
+    gap: 16px;
+    padding: 24px;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: stretch;
+    min-height: 300px;
+    position: relative;
+    height: 100%;
 }
 
 .message-item {
-    max-width: 20%;
-    padding: 10px;
-    border-radius: 12px;
-    background-color: var(--background-card);
+    min-width: 200px;
+    max-width: 300px;
+    padding: 12px 16px;
+    border-radius: 18px;
+    background: var(--background-alt);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    box-shadow: 0 2px 8px var(--shadow);
+    position: relative;
+    flex-shrink: 0;
 }
 
 .gif-message {
-    border-radius: 10px;
-    border: 5px solid var(--background-main);
+    border-radius: 12px;
+    border: 3px solid var(--background-card);
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 4px 12px var(--shadow);
 }
 
 .message-item.mine {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: var(--background-main);
+    border-bottom-right-radius: 3px;
+    box-shadow: 0 4px 12px var(--shadow), 0 0 20px var(--glow);
     align-self: flex-end;
-    background-color: var(--accent);
-    color: var(--text-main);
+    margin-top: auto;
 }
 
 .message-item.theirs {
+    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-hover) 100%);
+    color: var(--text-main);
+    border-top-left-radius: 3px;
+    box-shadow: 0 4px 12px var(--shadow), 0 0 20px var(--glow-blue);
     align-self: flex-start;
-    background-color: var(--background-main);
-    color: var(--text-main);
+    margin-bottom: auto;
 }
 
-.logout-button {
-    padding: 12px 20px;
-    background-color: var(--accent);
-    color: var(--background-main);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+.message-item strong {
+    font-size: 0.875rem;
     font-weight: 600;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.15);
-    font-size: 24px;
-    margin: 10px;
+    opacity: 0.9;
 }
 
-.logout-button:hover {
-    background-color: var(--accent-hover);
+.no-room-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 1.125rem;
+    color: var(--text-muted);
+    background: var(--background-alt);
+}
+
+/* GIF Section Styling */
+.gif-section {
+    background: var(--background-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    max-height: 280px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    box-shadow: 0 8px 32px var(--shadow), 0 4px 16px rgba(0, 0, 0, 0.4);
+    margin: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.gif-section::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    right: 20px;
+    height: 10px;
+    background: var(--background-card);
+    border-radius: 16px 16px 0 0;
+    z-index: -1;
+}
+
+.gif-section:hover {
+    box-shadow: 0 12px 40px var(--shadow-hover), 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.gif-section h1 {
+    margin: 0 0 16px 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--glow);
+}
+
+.gif-search-form {
+    margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.gif-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--background-alt);
     color: var(--text-main);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.gif-search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.gif-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.gif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.gif-item {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px var(--shadow);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.gif-item:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 14px rgba(46, 204, 113, 0.22);
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px var(--shadow-hover), 0 0 20px var(--glow);
+}
+
+.gif-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Custom scrollbar for horizontal scrolling */
+.message-list::-webkit-scrollbar {
+    height: 8px;
+}
+
+.message-list::-webkit-scrollbar-track {
+    background: var(--background-alt);
+    border-radius: 4px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
+}
+
+/* Custom scrollbar for chatroom list */
+.chatroom-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chatroom-list::-webkit-scrollbar-track {
+    background: var(--background-card);
+    border-radius: 3px;
+}
+
+.chatroom-list::-webkit-scrollbar-thumb {
+    background: var(--accent-blue);
+    border-radius: 3px;
+}
+
+.chatroom-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue-hover);
+}
+
+/* Custom scrollbar for GIF section */
+.gif-section::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gif-section::-webkit-scrollbar-track {
+    background: var(--background-alt);
+    border-radius: 4px;
+    margin: 4px;
+}
+
+.gif-section::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+
+.gif-section::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-light) 100%);
+    box-shadow: 0 0 10px var(--glow);
 }

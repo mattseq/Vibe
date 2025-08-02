@@ -1,14 +1,23 @@
 :root {
-  /* Modern Accessible Dark Mode Palette */
-  --background-main: #181a20;
-  --background-card: #23262f;
-  --background-alt: #20232a;
-  --accent: #2ecc71;
-  --accent-hover: #27ae60;
-  --error: #ff4d6d;
-  --text-main: #f4f4f4;
-  --text-muted: #b0b3b8;
-  --border: #31343b;
+  --background-main: #0F1419;
+  --background-card: #1A1F2E;
+  --background-alt: #252B3D;
+  --accent: #FFD700;
+  --accent-hover: #FFED4E;
+  --accent-blue: #4A9EFF;
+  --accent-blue-hover: #6BB3FF;
+  --accent-light: #FFE55C;
+  --accent-dark: #E6C200;
+  --error: #FF6B6B;
+  --text-main: #FFFFFF;
+  --text-muted: #B8C5D6;
+  --text-light: #E8F4FD;
+  --border: #2A3142;
+  --border-accent: #FFD700;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-hover: rgba(0, 0, 0, 0.5);
+  --glow: rgba(255, 215, 0, 0.2);
+  --glow-blue: rgba(74, 158, 255, 0.2);
 }
 
 body {

@@ -1,6 +1,6 @@
-import { React, useEffect, useState} from "react";
+import { React, useEffect, useRef, useState} from "react";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { motion, scale } from "framer-motion";
 
@@ -8,18 +8,24 @@ import './styles/Index.css';
 
 export default function Index() {
   const [currentRoomId, setCurrentRoomId] = useState(null);
+  const [gifs, setGifs] = useState(false);
 
   return (
     <div className="index-container">
-      <div className="chat-list">
-        <h2>Chat Rooms</h2>
+      <div className="sidebar">
+        <div className="header" >
+          <h2>Chat Rooms</h2>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >+</motion.button>
+        </div>
         <ChatroomList onSelect={setCurrentRoomId} />
         <LogoutButton />
       </div>
       <div className="chat-window">
           <ChatMessages roomId={currentRoomId} />
-          
-          <div>{/* For the GIF selector */}</div>
+          {currentRoomId && <Gifs currentRoomId={currentRoomId} />}
       </div>
     </div>
   );
@@ -85,7 +91,6 @@ function ChatroomList({ onSelect }) {
           onClick={() => onSelect(room.id)}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          transition={{ type: "spring", stiffness: 300, bounce: 0.2 }}
         >
           <h3>{room.chatName || "Unnamed Chat"}</h3>
           <p>{room.participants
@@ -105,6 +110,7 @@ function ChatroomList({ onSelect }) {
 function ChatMessages({ roomId }) {
   const [messages, setMessages] = useState([]);
   const [names, setNames] = useState({});
+  const endOfMessagesRef = useRef(null);
 
   useEffect(() => {
     if (!roomId) return;
@@ -137,6 +143,10 @@ function ChatMessages({ roomId }) {
     };
   }, [roomId]);
 
+  useEffect(() => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" })
+  });
+
   if (!roomId) {
     return <div className="no-room-selected">Select a chat room to see messages</div>;
   }
@@ -150,6 +160,7 @@ function ChatMessages({ roomId }) {
           <strong>{names[msg.senderId] || "Unknown User"} </strong> <img className="gif-message" src={msg.gifUrl} />
         </li>
       ))}
+      <div ref={endOfMessagesRef} />
     </ol>
   );
 }
@@ -159,7 +170,7 @@ function LogoutButton() {
     try {
       await signOut(auth);
       
-      updateDoc(doc(db, "users", auth.currentUser.uid), {
+      updateDoc(doc(db, "users"), {
         lastActive: serverTimestamp()
       });
 
@@ -168,7 +179,13 @@ function LogoutButton() {
     }
   };
 
-  return <button className="logout-button" onClick={handleLogout}>Log Out</button>;
+  return <motion.button className="logout-button" onClick={handleLogout}
+    initial={{ y: 0, scale: 1 }}
+    whileHover={{ y: -5, scale: 1.02 }}
+    transition={{ type: "spring", stiffness: 300, bounce: 0.2 }}
+  >
+    Log Out
+  </motion.button>;
 }
 
 async function getDisplayNames(userIds) {
@@ -190,4 +207,94 @@ async function getDisplayNames(userIds) {
   );
 
   return results;
+}
+
+
+function Gifs({ currentRoomId }) {
+  const [gifs, setGifs] = useState([]);
+  const [query, setQuery] = useState("");
+
+  const API_KEY = import.meta.env.VITE_KLIPY_API_KEY;
+  const BASE = 'https://api.klipy.com/api/v1';
+
+  const customer_id = auth.currentUser?.uid;
+
+  async function fetchGifs(searchQuery = '') {
+    const endpoint = searchQuery
+      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customer_id}`
+      : `${BASE}/${API_KEY}/gifs/trending`;
+
+    try {
+      const response = await fetch(endpoint);
+      const result = await response.json();
+
+      if(result.result && result.data?.data){
+        setGifs(result.data.data);
+        console.log(result.data.data)
+      } else {
+        setGifs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching gifs:', error);
+    }
+  }
+
+  useEffect(() => {
+    fetchGifs();
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchGifs(query);
+  };
+
+  async function handleSendGif(gif) {
+    const gifUrl = gif.file.md.gif.url;
+
+    const user = auth.currentUser;
+
+    if (!user) {
+      console.error("User not authenticated")
+    }
+
+    try {
+      await addDoc(collection(db, 'chatRooms', currentRoomId, 'messages'), {
+        senderId: user.uid,
+        gifUrl: gifUrl,
+        timestamp: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error sending GIF message")
+    }
+  }
+
+  return (
+    <motion.div
+      className="gif-section"
+      initial={{ y: 0 }}
+      whileHover={{ y: -5 }}
+    >
+      <h1>Klipy GIFs</h1>
+      <form onSubmit={handleSearch} className="gif-search-form">
+        <input
+          type="text"
+          value={query}
+          placeholder="Search GIFs..."
+          onChange={(e) => setQuery(e.target.value)}
+          className="gif-search-input"
+        />
+      </form>
+      <div className="gif-grid">
+        {gifs.map(gif => (
+          <div key={gif.id} className="gif-item" onClick={() => handleSendGif(gif)}>
+            <img
+              src={gif.file.md.gif.url}
+              alt={gif.title || 'GIF'}
+              loading="lazy"
+            />
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
 }
