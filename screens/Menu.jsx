@@ -1,11 +1,32 @@
 import { React, useEffect, useRef, useState} from "react";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 
 export default function Menu({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editChatroom, setEditChatroom] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ visible: false, chatroom: null, x: 0, y: 0 });
+
+  const openCreateModal = () => {
+    setEditMode(false);
+    setEditChatroom(null);
+    setModalVisible(true);
+  };
+
+  const openEditModal = (chatroom) => {
+    setEditMode(true);
+    setEditChatroom(chatroom);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setEditMode(false);
+    setEditChatroom(null);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -13,21 +34,40 @@ export default function Menu({ navigation }) {
       <View style={styles.mainLayout}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chat Rooms</Text>
-          <Pressable style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <Pressable style={styles.addButton} onPress={openCreateModal}>
             <Text style={styles.addButtonText}>+</Text>
           </Pressable>
         </View>
-        <ChatroomList navigation={navigation} />
+        <ChatroomList
+          navigation={navigation}
+          onLongPressChatroom={(chatroom, x, y) => setContextMenu({ visible: true, chatroom, x, y })}
+        />
       </View>
       <CreateChatModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        onClose={closeModal}
+        editMode={editMode}
+        chatroom={editChatroom}
+      />
+      <ContextMenu
+        visible={contextMenu.visible}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+        onSettings={() => {
+          setContextMenu({ ...contextMenu, visible: false });
+          openEditModal(contextMenu.chatroom);
+        }}
+        onDelete={() => {
+          deleteDoc(doc(db, "chatRooms", contextMenu.chatroom.id))
+          setContextMenu({ ...contextMenu, visible: false });
+        }}
       />
     </SafeAreaView>
   );
 }
 
-function ChatroomList({ navigation }) {
+function ChatroomList({ navigation, onLongPressChatroom }) {
   const [chatrooms, setChatrooms] = useState([]);
   const [usernames, setUsernames] = useState({});
 
@@ -100,6 +140,12 @@ function ChatroomList({ navigation }) {
             key={room.id} 
             style={styles.chatroomCard}
             onPress={() => handlePress(room)}
+            onLongPress={e => {
+              const x = e.nativeEvent.pageX;
+              const y = e.nativeEvent.pageY;
+              // Pass usernames mapping with the chatroom
+              onLongPressChatroom({ ...room, usernames }, x, y);
+            }}
           >
             <Text style={styles.chatName}>{room.chatName || "Unnamed Chat"}</Text>
             <Text style={styles.participants}>
@@ -119,11 +165,44 @@ function ChatroomList({ navigation }) {
   );
 }
 
-function CreateChatModal({ visible, onClose }) {
+// ContextMenu component
+function ContextMenu({ visible, x, y, onClose, onSettings, onDelete }) {
+  if (!visible) return null;
+  return (
+    <Pressable style={styles.contextMenuOverlay} onPress={onClose}>
+      <View style={[styles.contextMenu, { top: y, left: x }]}>
+        <Pressable style={styles.contextMenuItem} onPress={onSettings}>
+          <Text style={styles.contextMenuText}>Settings</Text>
+        </Pressable>
+        <Pressable style={styles.contextMenuItem} onPress={onDelete}>
+          <Text style={[styles.contextMenuText, { color: COLORS.error }]}>Delete</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+
+
+function CreateChatModal({ visible, onClose, editMode, chatroom }) {
   const [chatName, setChatName] = useState('');
   const [participantQuery, setParticipantQuery] = useState('');
   const [possibleParticipants, setPossibleParticipants] = useState([]);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
+
+  // Pre-fill for edit mode
+  useEffect(() => {
+    if (editMode && chatroom) {
+      setChatName(chatroom.chatName || '');
+      setSelectedParticipants(
+        chatroom.participants
+          .filter(id => id !== auth.currentUser.uid)
+          .map(id => ({ id, displayName: chatroom.usernames?.[id] || "Unknown User" }))
+      );
+    } else if (!visible) {
+      setChatName('');
+      setSelectedParticipants([]);
+    }
+  }, [editMode, chatroom, visible]);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -167,26 +246,43 @@ function CreateChatModal({ visible, onClose }) {
     setSelectedParticipants(selectedParticipants.filter(u => u.id !== user.id));
   };
 
-  const handleCreate = () => {
-    // Backend logic to create chat room goes here
+  const handleCreateOrUpdate = () => {
     const user = auth.currentUser;
     if (!user) return;
+    
+    if (editMode && chatroom) {
+      // Update chatroom
+      const chatRoomData = {
+        chatName: chatName || "Unnamed Chat",
+        participants: [user.uid, ...selectedParticipants.map(u => u.id)]
+      }
 
-    const chatRoomData = {
-      chatName: chatName || "Unnamed Chat",
-      participants: [user.uid, ...selectedParticipants.map(u => u.id)],
-      createdAt: serverTimestamp(),
-      createdBy: user.uid
-    };
+      updateDoc(doc(db, "chatRooms", chatroom.id), chatRoomData)
+        .then(() => {
+          console.log("Chat room updated successfully");
+        })
+        .catch((error) => {
+          console.error("Error updating chat room:", error);
+        }
+      );
 
-    addDoc(collection(db, "chatRooms"), chatRoomData)
-      .then(() => {
-        console.log("Chat room created successfully");
-      })
-      .catch((error) => {
-        console.error("Error creating chat room:", error);
-      });
+    } else {
+      // Create chatroom
+      const chatRoomData = {
+        chatName: chatName || "Unnamed Chat",
+        participants: [user.uid, ...selectedParticipants.map(u => u.id)],
+        createdAt: serverTimestamp(),
+        createdBy: user.uid
+      };
 
+      addDoc(collection(db, "chatRooms"), chatRoomData)
+        .then(() => {
+          console.log("Chat room created successfully");
+        })
+        .catch((error) => {
+          console.error("Error creating chat room:", error);
+        });
+    }
     onClose();
     setChatName('');
     setParticipantQuery('');
@@ -202,7 +298,7 @@ function CreateChatModal({ visible, onClose }) {
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Create New Chat Room</Text>
+          <Text style={styles.modalTitle}>{editMode ? "Edit Chat Room" : "Create New Chat Room"}</Text>
           <TextInput
             style={styles.modalInput}
             placeholder="Chat Room Name"
@@ -254,10 +350,10 @@ function CreateChatModal({ visible, onClose }) {
                 styles.modalButtonCreate,
                 (!chatName || selectedParticipants.length === 0) && { opacity: 0.5 }
               ]}
-              onPress={handleCreate}
+              onPress={handleCreateOrUpdate}
               disabled={!chatName || selectedParticipants.length === 0}
             >
-              <Text style={styles.modalButtonTextCreate}>Create</Text>
+              <Text style={styles.modalButtonTextCreate}>{editMode ? "Update" : "Create"}</Text>
             </Pressable>
           </View>
         </View>
@@ -490,6 +586,32 @@ const styles = StyleSheet.create({
   modalButtonTextCreate: {
     color: COLORS.textMain,
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  contextMenuOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    zIndex: 100,
+  },
+  contextMenu: {
+    position: 'absolute',
+    left: 40,
+    backgroundColor: COLORS.backgroundCard,
+    borderRadius: 10,
+    paddingVertical: 4,
+    width: 140,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+  },
+  contextMenuItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+  },
+  contextMenuText: {
+    color: COLORS.textMain,
     fontSize: 16,
   },
 });
