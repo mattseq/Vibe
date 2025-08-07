@@ -1,10 +1,11 @@
 import { React, useEffect, useRef, useState} from "react";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 
 export default function Menu({ navigation }) {
+  const [modalVisible, setModalVisible] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -12,12 +13,16 @@ export default function Menu({ navigation }) {
       <View style={styles.mainLayout}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chat Rooms</Text>
-          <Pressable style={styles.addButton}>
+          <Pressable style={styles.addButton} onPress={() => setModalVisible(true)}>
             <Text style={styles.addButtonText}>+</Text>
           </Pressable>
         </View>
         <ChatroomList navigation={navigation} />
       </View>
+      <CreateChatModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -76,7 +81,9 @@ function ChatroomList({ navigation }) {
   const handlePress = (chatroom) => {
     navigation.navigate('ChatRoom', {
       chatroomId: chatroom.id,
-      chatroomName: chatroom.displayName,
+      chatroomName: chatroom.chatName,
+      chatroomParticipants: chatroom.participants.filter(id => id !== auth.currentUser.uid)
+        .map(id => usernames[id] || "Loading...").join(', ')
     });
   };
 
@@ -109,6 +116,153 @@ function ChatroomList({ navigation }) {
         ))
       )}
     </ScrollView>
+  );
+}
+
+function CreateChatModal({ visible, onClose }) {
+  const [chatName, setChatName] = useState('');
+  const [participantQuery, setParticipantQuery] = useState('');
+  const [possibleParticipants, setPossibleParticipants] = useState([]);
+  const [selectedParticipants, setSelectedParticipants] = useState([]);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(
+      collection(db, "users"),
+      where("displayName", ">=", participantQuery),
+      where("displayName", "<=", participantQuery + "\uf8ff"),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      const displayNames = querySnapshot.docs
+      .filter(doc => doc.id !== user.uid) // exclude current user
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPossibleParticipants(displayNames);
+      console.log("Fetched participants:", participantQuery, displayNames);
+    });
+
+    return () => unsubscribe();
+  }, [participantQuery]);
+
+  // Filter participants by query
+  const filteredParticipants = possibleParticipants.filter(
+    user =>
+      user.displayName.toLowerCase().includes(participantQuery.toLowerCase()) &&
+      !selectedParticipants.some(sel => sel.id === user.id)
+  );
+
+  const handleSelectParticipant = (user) => {
+    if (!selectedParticipants.some(u => u.id === user.id)) {
+      setSelectedParticipants([...selectedParticipants, user]);
+    }
+  };
+
+  const handleRemoveParticipant = (user) => {
+    setSelectedParticipants(selectedParticipants.filter(u => u.id !== user.id));
+  };
+
+  const handleCreate = () => {
+    // Backend logic to create chat room goes here
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const chatRoomData = {
+      chatName: chatName || "Unnamed Chat",
+      participants: [user.uid, ...selectedParticipants.map(u => u.id)],
+      createdAt: serverTimestamp(),
+      createdBy: user.uid
+    };
+
+    addDoc(collection(db, "chatRooms"), chatRoomData)
+      .then(() => {
+        console.log("Chat room created successfully");
+      })
+      .catch((error) => {
+        console.error("Error creating chat room:", error);
+      });
+
+    onClose();
+    setChatName('');
+    setParticipantQuery('');
+    setSelectedParticipants([]);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create New Chat Room</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Chat Room Name"
+            placeholderTextColor={COLORS.textMuted}
+            value={chatName}
+            onChangeText={setChatName}
+          />
+          <Text style={styles.modalLabel}>Participants</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Search users..."
+            placeholderTextColor={COLORS.textMuted}
+            value={participantQuery}
+            onChangeText={setParticipantQuery}
+          />
+          <View style={styles.selectedParticipantsRow}>
+            {selectedParticipants.map(user => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.selectedParticipant}
+                onPress={() => handleRemoveParticipant(user)}
+              >
+                <Text style={styles.selectedParticipantText}>{user.displayName} ✕</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <FlatList
+            data={filteredParticipants}
+            keyExtractor={item => item.id}
+            style={styles.participantList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.participantItem}
+                onPress={() => handleSelectParticipant(item)}
+              >
+                <Text style={styles.participantNameModal}>{item.displayName}</Text>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <Text style={styles.noParticipantsText}>No users found</Text>
+            }
+          />
+          <View style={styles.modalActions}>
+            <Pressable style={styles.modalButtonCancel} onPress={onClose}>
+              <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.modalButtonCreate,
+                (!chatName || selectedParticipants.length === 0) && { opacity: 0.5 }
+              ]}
+              onPress={handleCreate}
+              disabled={!chatName || selectedParticipants.length === 0}
+            >
+              <Text style={styles.modalButtonTextCreate}>Create</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -230,5 +384,112 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textMuted,
     textAlign: 'center',
-  }
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: COLORS.backgroundCard,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.textMain,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalInput: {
+    backgroundColor: COLORS.backgroundAlt,
+    color: COLORS.textMain,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 12,
+  },
+  modalLabel: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    marginBottom: 4,
+    marginTop: 4,
+  },
+  selectedParticipantsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+    gap: 6,
+  },
+  selectedParticipant: {
+    backgroundColor: COLORS.accentBlue,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  selectedParticipantText: {
+    color: COLORS.textMain,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  participantList: {
+    maxHeight: 120,
+    marginBottom: 12,
+  },
+  participantItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  participantNameModal: {
+    color: COLORS.textMain,
+    fontSize: 16,
+  },
+  noParticipantsText: {
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingVertical: 10,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalButtonCancel: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: COLORS.backgroundAlt,
+    marginRight: 8,
+  },
+  modalButtonTextCancel: {
+    color: COLORS.textMuted,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalButtonCreate: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: COLORS.accentBlue,
+  },
+  modalButtonTextCreate: {
+    color: COLORS.textMain,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
