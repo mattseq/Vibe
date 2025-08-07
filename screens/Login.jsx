@@ -19,7 +19,6 @@ export default function Login() {
       setError(err.message);
     }
   };
-  
 
   const handleSignUp = async () => {
   setError("");
@@ -31,7 +30,7 @@ export default function Login() {
     // Create Firestore user document
     await setDoc(doc(db, "users", user.uid), {
       email: user.email,
-      displayName: "",
+      displayName: "Noob",
       bio: "",
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp()

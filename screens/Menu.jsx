@@ -42,6 +42,12 @@ export default function Menu({ navigation }) {
           navigation={navigation}
           onLongPressChatroom={(chatroom, x, y) => setContextMenu({ visible: true, chatroom, x, y })}
         />
+        <View style={styles.footer}>
+          <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Profile')}>
+            <Text style={styles.footerTextAccent}>Profile</Text>
+          </Pressable>
+          <LogoutButton />
+        </View>
       </View>
       <CreateChatModal
         visible={modalVisible}
@@ -65,6 +71,26 @@ export default function Menu({ navigation }) {
       />
     </SafeAreaView>
   );
+}
+
+function LogoutButton() {
+  const handleLogout = async () => {
+    try {
+      updateDoc(doc(db, "users", auth.currentUser?.uid), {
+        lastActive: serverTimestamp()
+      });
+
+      await signOut(auth);
+      console.log("User logged out successfully");
+
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  return <Pressable style={styles.footerButton} onPress={handleLogout}>
+    <Text style={styles.footerText}>Log out</Text>
+  </Pressable>;
 }
 
 function ChatroomList({ navigation, onLongPressChatroom }) {
@@ -165,7 +191,6 @@ function ChatroomList({ navigation, onLongPressChatroom }) {
   );
 }
 
-// ContextMenu component
 function ContextMenu({ visible, x, y, onClose, onSettings, onDelete }) {
   if (!visible) return null;
   return (
@@ -613,5 +638,44 @@ const styles = StyleSheet.create({
   contextMenuText: {
     color: COLORS.textMain,
     fontSize: 16,
+  },
+  footer: {
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.backgroundAlt,
+  },
+  footerText: {
+    color: COLORS.backgroundMain,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  footerTextAccent: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  footerButton: {
+    backgroundColor: COLORS.accent,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  footerButtonAccent: {
+    backgroundColor: COLORS.accentBlue,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
   },
 });

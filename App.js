@@ -8,6 +8,7 @@ import { auth } from './firebase';
 import Login from './screens/Login';
 import Menu from './screens/Menu';
 import ChatRoom from './screens/ChatRoom';
+import Profile from './screens/Profile';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +39,11 @@ export default function App() {
             name="Menu"
             component={Menu}
             options={{ title: 'Chat Rooms', headerShown: false }}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={Profile}
+            options={{ title: 'Profile', headerShown: false }}
           />
           <Stack.Screen
             name="ChatRoom"
