@@ -10,6 +10,7 @@ import Menu from './screens/Menu';
 import ChatRoom from './screens/ChatRoom';
 import Profile from './screens/Profile';
 import Settings from './screens/Settings';
+import { ThemeProvider } from './context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,41 +32,43 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {user ? (
-          // User is signed in
-          <>
-          <Stack.Screen
-            name="Menu"
-            component={Menu}
-            options={{ title: 'Chat Rooms', headerShown: false }}
-          />
-          <Stack.Screen
-            name="Profile"
-            component={Profile}
-            options={{ title: 'Profile', headerShown: false }}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={Settings}
-            options={{ title: 'Settings', headerShown: false }}
-          />
-          <Stack.Screen
-            name="ChatRoom"
-            component={ChatRoom}
-            options={({ route }) => ({ title: `Chat: ${route.params.chatroomName}`, headerShown: false })}
-          />
-        </>
-        ) : (
-          // User is not signed in
-          <Stack.Screen
-            name="Login"
-            component={Login}
-            options={{ headerShown: false }}
-          />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          {user ? (
+            // User is signed in
+            <>
+            <Stack.Screen
+              name="Menu"
+              component={Menu}
+              options={{ title: 'Chat Rooms', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={Profile}
+              options={{ title: 'Profile', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={Settings}
+              options={{ title: 'Settings', headerShown: false }}
+            />
+            <Stack.Screen
+              name="ChatRoom"
+              component={ChatRoom}
+              options={({ route }) => ({ title: `Chat: ${route.params.chatroomName}`, headerShown: false })}
+            />
+          </>
+          ) : (
+            // User is not signed in
+            <Stack.Screen
+              name="Login"
+              component={Login}
+              options={{ headerShown: false }}
+            />
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }

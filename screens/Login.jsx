@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable } from 'react-native';
 
+import { ThemeContext } from '../context/ThemeContext';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
+
 export default function Login() {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  const styles = createStyles(COLORS);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -58,7 +65,7 @@ export default function Login() {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#888"
+        placeholderTextColor={COLORS.textMuted}
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
@@ -67,7 +74,7 @@ export default function Login() {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#888"
+        placeholderTextColor={COLORS.textMuted}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -83,30 +90,7 @@ export default function Login() {
   );
 }
 
-const COLORS = {
-  backgroundMain: '#0F1419',
-  backgroundCard: '#1A1F2E',
-  backgroundAlt: '#252B3D',
-  accent: '#FFD700',
-  accentHover: '#FFED4E',
-  accentBlue: '#4A9EFF',
-  accentBlueHover: '#6BB3FF',
-  accentLight: '#FFE55C',
-  accentDark: '#E6C200',
-  error: '#FF6B6B',
-  textMain: '#FFFFFF',
-  textMuted: '#B8C5D6',
-  textLight: '#E8F4FD',
-  border: '#2A3142',
-  borderAccent: '#FFD700',
-  shadow: 'rgba(0, 0, 0, 0.3)',
-  shadowHover: 'rgba(0, 0, 0, 0.5)',
-  glow: 'rgba(255, 215, 0, 0.2)',
-  glowBlue: 'rgba(74, 158, 255, 0.2)'
-};
-
-const styles = StyleSheet.create({
-
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     padding: 24,
     alignItems: "center",
@@ -142,7 +126,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMain
   },
   error: {
-    color: "red",
+    color: COLORS.error,
     marginTop: 10,
   },
   button: {
@@ -156,7 +140,7 @@ const styles = StyleSheet.create({
     marginTop: 10
   },
   buttonText: {
-    color: COLORS.textMain,
+    color: COLORS.textOnAccentBlue,
     fontSize: 16,
     fontWeight: 'bold'
   }

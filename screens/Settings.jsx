@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, Text, View, StatusBar, SafeAreaView, Pressable, ScrollView, Switch, Modal, TouchableOpacity } from 'react-native';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
+import { ThemeContext } from '../context/ThemeContext';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
+
 export default function Settings({ navigation }) {
+    const { theme, toggleTheme } = useContext(ThemeContext);
+    const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+    const styles = createStyles(COLORS);
+
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [contentFilter, setContentFilter] = useState('');
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -19,20 +26,9 @@ export default function Settings({ navigation }) {
         const newValue = !isDarkMode;
         setIsDarkMode(newValue);
 
+        toggleTheme()
+
         console.log('Theme changed to:', newValue ? 'dark' : 'light');
-
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDoc = doc(db, "users", user.uid);
-        
-        try {
-            await updateDoc(userDoc, {
-                darkMode: newValue
-            });
-        } catch (error) {
-            console.error("Error changing theme setting in Firebase: ", error);
-        }
     };
 
     const handleFilterChange = async (filter) => {
@@ -70,12 +66,13 @@ export default function Settings({ navigation }) {
             const docSnap = await getDoc(userDoc);
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                setIsDarkMode(data.darkMode ?? true);
                 setContentFilter(data.contentFilter || 'medium');
             }
         } catch (error) {
             console.error("Error fetching settings from Firebase: ", error);
         }
+
+        setIsDarkMode(theme == 'dark')
     }
 
     useEffect(() => {
@@ -84,7 +81,7 @@ export default function Settings({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.backgroundMain} />
+            <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={COLORS.backgroundMain} />
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Settings</Text>
@@ -195,29 +192,7 @@ export default function Settings({ navigation }) {
     );
 }
 
-const COLORS = {
-    backgroundMain: '#0F1419',
-    backgroundCard: '#1A1F2E',
-    backgroundAlt: '#252B3D',
-    accent: '#FFD700',
-    accentHover: '#FFED4E',
-    accentBlue: '#4A9EFF',
-    accentBlueHover: '#6BB3FF',
-    accentLight: '#FFE55C',
-    accentDark: '#E6C200',
-    error: '#FF6B6B',
-    textMain: '#FFFFFF',
-    textMuted: '#B8C5D6',
-    textLight: '#E8F4FD',
-    border: '#2A3142',
-    borderAccent: '#FFD700',
-    shadow: 'rgba(0, 0, 0, 0.3)',
-    shadowHover: 'rgba(0, 0, 0, 0.5)',
-    glow: 'rgba(255, 215, 0, 0.2)',
-    glowBlue: 'rgba(74, 158, 255, 0.2)'
-};
-
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.backgroundMain,

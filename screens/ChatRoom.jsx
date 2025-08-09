@@ -1,15 +1,22 @@
-import { React, useEffect, useRef, useState } from "react";
+import { React, useEffect, useRef, useState, useContext } from "react";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import Constants from 'expo-constants';
 
+import { ThemeContext } from '../context/ThemeContext';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
+
 export default function ChatRoom({ route, navigation }) {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  const styles = createStyles(COLORS);
+
   const { chatroomId, chatroomName, chatroomParticipants } = route.params;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>← Back</Text>
@@ -20,16 +27,16 @@ export default function ChatRoom({ route, navigation }) {
         <Text style={styles.roomIdText}><Text style={{fontWeight: 'bold'}}>Members: </Text>{chatroomParticipants}</Text>
       </View>
       <View style={styles.messagesContainer}>
-        <ChatMessages roomId={chatroomId} />
+        <ChatMessages COLORS={COLORS} styles={styles} roomId={chatroomId} />
       </View>
       <View style={styles.gifsContainer}>
-        <Gifs currentRoomId={chatroomId} />
+        <Gifs COLORS={COLORS} styles={styles} currentRoomId={chatroomId} />
       </View>
     </SafeAreaView>
   );
 }
 
-function ChatMessages({ roomId }) {
+function ChatMessages({ COLORS, styles, roomId }) {
   const [messages, setMessages] = useState([]);
   const [names, setNames] = useState({});
   const flatListRef = useRef(null);
@@ -121,7 +128,7 @@ async function getDisplayNames(userIds) {
   return results;
 }
 
-function Gifs({ currentRoomId }) {
+function Gifs({ COLORS, styles, currentRoomId }) {
   const [gifs, setGifs] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -242,29 +249,7 @@ function Gifs({ currentRoomId }) {
   );
 }
 
-const COLORS = {
-  backgroundMain: '#0F1419',
-  backgroundCard: '#1A1F2E',
-  backgroundAlt: '#252B3D',
-  accent: '#FFD700',
-  accentHover: '#FFED4E',
-  accentBlue: '#4A9EFF',
-  accentBlueHover: '#6BB3FF',
-  accentLight: '#FFE55C',
-  accentDark: '#E6C200',
-  error: '#FF6B6B',
-  textMain: '#FFFFFF',
-  textMuted: '#B8C5D6',
-  textLight: '#E8F4FD',
-  border: '#2A3142',
-  borderAccent: '#FFD700',
-  shadow: 'rgba(0, 0, 0, 0.3)',
-  shadowHover: 'rgba(0, 0, 0, 0.5)',
-  glow: 'rgba(255, 215, 0, 0.2)',
-  glowBlue: 'rgba(74, 158, 255, 0.2)'
-};
-
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundMain,
@@ -391,7 +376,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   gifSearchButtonText: {
-    color: COLORS.textMain,
+    color: COLORS.textOnAccentBlue,
     fontWeight: 'bold',
     fontSize: 15,
   },

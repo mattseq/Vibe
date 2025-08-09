@@ -1,11 +1,17 @@
-import { React, useEffect, useRef, useState} from "react";
+import { React, useEffect, useRef, useState, useContext} from "react";
 import { signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { FontAwesome } from "@expo/vector-icons";
+import { ThemeContext } from '../context/ThemeContext';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
 
 export default function Menu({ navigation }) {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  const styles = createStyles(COLORS);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editChatroom, setEditChatroom] = useState(null);
@@ -31,7 +37,7 @@ export default function Menu({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.backgroundMain} />
+      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={COLORS.backgroundMain} />
       <View style={styles.mainLayout}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chat Rooms</Text>
@@ -40,29 +46,35 @@ export default function Menu({ navigation }) {
           </Pressable>
         </View>
         <ChatroomList
+          COLORS={COLORS}
+          styles={styles}
           navigation={navigation}
           onLongPressChatroom={(chatroom, x, y) => setContextMenu({ visible: true, chatroom, x, y })}
         />
         <View style={styles.footer}>
           <View style={{display: 'flex', flexDirection: 'row', gap: 10}}>
             <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Settings')}>
-              <Text style={styles.footerTextAccent}><FontAwesome name="gear" size={24} color={COLORS.textMain} /></Text>
+              <Text style={styles.footerTextAccent}><FontAwesome name="gear" size={24} color={COLORS.textOnAccentBlue} /></Text>
             </Pressable>
             <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Profile')}>
-              <Text style={styles.footerTextAccent}><FontAwesome name="user" size={24} color={COLORS.textMain} /></Text>
+              <Text style={styles.footerTextAccent}><FontAwesome name="user" size={24} color={COLORS.textOnAccentBlue} /></Text>
             </Pressable>
           </View>
           
-          <LogoutButton />
+          <LogoutButton COLORS={COLORS} styles={styles} />
         </View>
       </View>
       <CreateChatModal
+        COLORS={COLORS}
+        styles={styles}
         visible={modalVisible}
         onClose={closeModal}
         editMode={editMode}
         chatroom={editChatroom}
       />
       <ContextMenu
+        COLORS={COLORS}
+        styles={styles}
         visible={contextMenu.visible}
         x={contextMenu.x}
         y={contextMenu.y}
@@ -80,7 +92,7 @@ export default function Menu({ navigation }) {
   );
 }
 
-function LogoutButton() {
+function LogoutButton({ COLORS, styles }) {
   const handleLogout = async () => {
     try {
       updateDoc(doc(db, "users", auth.currentUser?.uid), {
@@ -100,7 +112,7 @@ function LogoutButton() {
   </Pressable>;
 }
 
-function ChatroomList({ navigation, onLongPressChatroom }) {
+function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
   const [chatrooms, setChatrooms] = useState([]);
   const [usernames, setUsernames] = useState({});
 
@@ -198,7 +210,7 @@ function ChatroomList({ navigation, onLongPressChatroom }) {
   );
 }
 
-function ContextMenu({ visible, x, y, onClose, onSettings, onDelete }) {
+function ContextMenu({ COLORS, styles, visible, x, y, onClose, onSettings, onDelete }) {
   if (!visible) return null;
   return (
     <Pressable style={styles.contextMenuOverlay} onPress={onClose}>
@@ -215,7 +227,7 @@ function ContextMenu({ visible, x, y, onClose, onSettings, onDelete }) {
 }
 
 
-function CreateChatModal({ visible, onClose, editMode, chatroom }) {
+function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom }) {
   const [chatName, setChatName] = useState('');
   const [participantQuery, setParticipantQuery] = useState('');
   const [possibleParticipants, setPossibleParticipants] = useState([]);
@@ -394,29 +406,7 @@ function CreateChatModal({ visible, onClose, editMode, chatroom }) {
   );
 }
 
-const COLORS = {
-  backgroundMain: '#0F1419',
-  backgroundCard: '#1A1F2E',
-  backgroundAlt: '#252B3D',
-  accent: '#FFD700',
-  accentHover: '#FFED4E',
-  accentBlue: '#4A9EFF',
-  accentBlueHover: '#6BB3FF',
-  accentLight: '#FFE55C',
-  accentDark: '#E6C200',
-  error: '#FF6B6B',
-  textMain: '#FFFFFF',
-  textMuted: '#B8C5D6',
-  textLight: '#E8F4FD',
-  border: '#2A3142',
-  borderAccent: '#FFD700',
-  shadow: 'rgba(0, 0, 0, 0.3)',
-  shadowHover: 'rgba(0, 0, 0, 0.5)',
-  glow: 'rgba(255, 215, 0, 0.2)',
-  glowBlue: 'rgba(74, 158, 255, 0.2)'
-};
-
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundMain,
@@ -451,7 +441,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.backgroundMain,
+    color: COLORS.textOnAccent,
   },
   chatWindow: {
     flex: 1,
@@ -656,13 +646,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.backgroundAlt,
   },
   footerText: {
-    color: COLORS.backgroundMain,
+    color: COLORS.textOnAccent,
     fontSize: 14,
     textAlign: 'center',
     fontWeight: 'bold',
   },
   footerTextAccent: {
-    color: COLORS.textLight,
+    color: COLORS.textOnAccentBlue,
     fontSize: 14,
     textAlign: 'center',
     fontWeight: 'bold',

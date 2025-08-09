@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
+import { ThemeContext } from '../context/ThemeContext';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
+
 export default function Profile({ navigation }) {
+    const { theme, toggleTheme } = useContext(ThemeContext);
+    const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+    const styles = createStyles(COLORS);
+
     const [displayName, setDisplayName] = useState('');
     const [bio, setBio] = useState('');
     const [email, setEmail] = useState('')
@@ -65,7 +72,7 @@ export default function Profile({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.backgroundMain} />
+            <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={COLORS.backgroundMain} />
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
@@ -163,29 +170,7 @@ export default function Profile({ navigation }) {
     );
 }
 
-const COLORS = {
-    backgroundMain: '#0F1419',
-    backgroundCard: '#1A1F2E',
-    backgroundAlt: '#252B3D',
-    accent: '#FFD700',
-    accentHover: '#FFED4E',
-    accentBlue: '#4A9EFF',
-    accentBlueHover: '#6BB3FF',
-    accentLight: '#FFE55C',
-    accentDark: '#E6C200',
-    error: '#FF6B6B',
-    textMain: '#FFFFFF',
-    textMuted: '#B8C5D6',
-    textLight: '#E8F4FD',
-    border: '#2A3142',
-    borderAccent: '#FFD700',
-    shadow: 'rgba(0, 0, 0, 0.3)',
-    shadowHover: 'rgba(0, 0, 0, 0.5)',
-    glow: 'rgba(255, 215, 0, 0.2)',
-    glowBlue: 'rgba(74, 158, 255, 0.2)'
-};
-
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.backgroundMain,
@@ -307,7 +292,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     editButtonText: {
-        color: COLORS.textMain,
+        color: COLORS.textOnAccentBlue,
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -321,7 +306,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     saveButtonText: {
-        color: COLORS.backgroundMain,
+        color: COLORS.textOnAccent,
         fontSize: 16,
         fontWeight: 'bold',
     },
