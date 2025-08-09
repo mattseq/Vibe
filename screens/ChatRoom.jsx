@@ -131,13 +131,30 @@ function Gifs({ currentRoomId }) {
   const customer_id = auth.currentUser?.uid;
 
   async function fetchGifs(searchQuery = '') {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    userDocRef = doc(db, "users", user.uid);
+    let contentFilter = 'off';
+
+    try {
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        contentFilter = data.contentFilter || 'off';
+      }
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+    }
+
     setLoading(true);
     const endpoint = searchQuery
-      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customer_id}`
+      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customer_id}&content_filter=${contentFilter}`
       : `${BASE}/${API_KEY}/gifs/trending`;
 
     try {
       const response = await fetch(endpoint);
+      console.log("Fetching GIFs from:", endpoint);
       const result = await response.json();
 
       if(result.result && result.data?.data){

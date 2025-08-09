@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "801715850780",
+    "project_id": "vibe-4ea6f",
+    "storage_bucket": "vibe-4ea6f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:801715850780:android:28cca16fcc081ec51819d9",
+        "android_client_info": {
+          "package_name": "com.mattseq.vibe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDiaQt8S3WpWy9tKS_EgPE0Tkpaf4N_kO4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

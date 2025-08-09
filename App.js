@@ -9,6 +9,7 @@ import Login from './screens/Login';
 import Menu from './screens/Menu';
 import ChatRoom from './screens/ChatRoom';
 import Profile from './screens/Profile';
+import Settings from './screens/Settings';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,11 @@ export default function App() {
             name="Profile"
             component={Profile}
             options={{ title: 'Profile', headerShown: false }}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={Settings}
+            options={{ title: 'Settings', headerShown: false }}
           />
           <Stack.Screen
             name="ChatRoom"

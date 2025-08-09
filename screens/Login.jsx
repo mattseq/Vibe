@@ -21,26 +21,28 @@ export default function Login() {
   };
 
   const handleSignUp = async () => {
-  setError("");
+    setError("");
 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    // Create Firestore user document
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      displayName: "Noob",
-      bio: "",
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp()
-    });
+      // Create Firestore user document
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        displayName: "",
+        bio: "",
+        createdAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+        contentFilter: 'off',
+        darkMode: true
+      });
 
-    console.log("Account created and Firestore profile added.");
-  } catch (err) {
-    setError(err.message);
-  }
-};
+      console.log("Account created and Firestore profile added.");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

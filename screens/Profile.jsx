@@ -1,13 +1,344 @@
-import React from 'react';
-import { Text, View, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
 export default function Profile({ navigation }) {
+    const [displayName, setDisplayName] = useState('');
+    const [bio, setBio] = useState('');
+    const [email, setEmail] = useState('')
+    const [createdAt, setCreatedAt] = useState('')
+    const [lastActive, setLastActive] = useState('')
+    const [isEditing, setIsEditing] = useState(false);
+
+    const fetchUserProfile = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const userDocRef = doc(db, "users", user.uid);
+    
+        try {
+            const docSnap = await getDoc(userDocRef);
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                setDisplayName(userData.displayName || 'John Doe');
+                setBio(userData.bio);
+                setEmail(userData.email);
+                setCreatedAt(userData.createdAt?.toDate().toDateString() || 'Unknown')
+                setLastActive(userData.lastActive?.toDate().toDateString() || 'Unknown')
+            }
+        } catch (error) {
+            console.error("Error fetching user profile: ", error)
+        }
+    }
+
+    useEffect(() => {
+        // set profile at the start
+        fetchUserProfile();
+    }, []);
+
+    const handleSaveChanges = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const userDocRef = doc(db, "users", user.uid);
+
+        try {
+            await updateDoc(userDocRef, {
+                displayName: displayName,
+                bio: bio,
+                lastActive: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error updating profile: ", error);
+        }
+
+        setIsEditing(false);
+    };
+
+    const handleCancelEdit = () => {
+        // reset to original values
+        fetchUserProfile();
+        setIsEditing(false);
+    };
+
     return (
-        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Profile
-            </Text>
-            <Text style={{ fontSize: 16, marginTop: 10 }}>This is the profile screen.</Text>
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor={COLORS.backgroundMain} />
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Profile</Text>
+                    <Pressable 
+                        style={styles.backButton} 
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.backButtonText}>←</Text>
+                    </Pressable>
+                </View>
+
+                <View style={styles.profileCard}>
+                    <View style={styles.avatarSection}>
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>
+                                {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
+                            </Text>
+                        </View>
+                        <Text style={styles.email}>{email}</Text>
+                    </View>
+
+                    <View style={styles.infoSection}>
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Display Name</Text>
+                            {isEditing ? (
+                                <TextInput
+                                    style={styles.input}
+                                    value={displayName}
+                                    onChangeText={setDisplayName}
+                                    placeholder="Enter display name"
+                                    placeholderTextColor={COLORS.textMuted}
+                                    maxLength={30}
+                                />
+                            ) : (
+                                <Text style={styles.fieldValue}>
+                                    {displayName || 'No display name set'}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Bio</Text>
+                            {isEditing ? (
+                                <TextInput
+                                    style={[styles.input, styles.bioInput]}
+                                    value={bio}
+                                    onChangeText={setBio}
+                                    placeholder="Tell us about yourself..."
+                                    placeholderTextColor={COLORS.textMuted}
+                                    multiline
+                                    numberOfLines={4}
+                                    maxLength={200}
+                                />
+                            ) : (
+                                <Text style={styles.fieldValue}>
+                                    {bio || 'No bio set'}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Member Since</Text>
+                            <Text style={styles.fieldValue}>
+                                {createdAt}
+                            </Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Last Active</Text>
+                            <Text style={styles.fieldValue}>
+                                {lastActive}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.actionButtons}>
+                        {isEditing ? (
+                            <>
+                                <Pressable style={styles.saveButton} onPress={handleSaveChanges}>
+                                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                                </Pressable>
+                                <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </Pressable>
+                            </>
+                        ) : (
+                            <Pressable style={styles.editButton} onPress={() => setIsEditing(true)}>
+                                <Text style={styles.editButtonText}>Edit Profile</Text>
+                            </Pressable>
+                        )}
+                    </View>
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
+
+const COLORS = {
+    backgroundMain: '#0F1419',
+    backgroundCard: '#1A1F2E',
+    backgroundAlt: '#252B3D',
+    accent: '#FFD700',
+    accentHover: '#FFED4E',
+    accentBlue: '#4A9EFF',
+    accentBlueHover: '#6BB3FF',
+    accentLight: '#FFE55C',
+    accentDark: '#E6C200',
+    error: '#FF6B6B',
+    textMain: '#FFFFFF',
+    textMuted: '#B8C5D6',
+    textLight: '#E8F4FD',
+    border: '#2A3142',
+    borderAccent: '#FFD700',
+    shadow: 'rgba(0, 0, 0, 0.3)',
+    shadowHover: 'rgba(0, 0, 0, 0.5)',
+    glow: 'rgba(255, 215, 0, 0.2)',
+    glowBlue: 'rgba(74, 158, 255, 0.2)'
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: COLORS.backgroundMain,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        backgroundColor: COLORS.backgroundAlt,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: COLORS.textMain,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: COLORS.backgroundCard,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    backButtonText: {
+        fontSize: 18,
+        color: COLORS.textMain,
+        fontWeight: 'bold',
+    },
+    profileCard: {
+        margin: 16,
+        backgroundColor: COLORS.backgroundCard,
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: COLORS.shadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    avatarSection: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    avatar: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: COLORS.accent,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+        shadowColor: COLORS.glow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    avatarText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: COLORS.backgroundMain,
+    },
+    email: {
+        fontSize: 14,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+    },
+    infoSection: {
+        marginBottom: 24,
+    },
+    fieldContainer: {
+        marginBottom: 20,
+    },
+    fieldLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.textMuted,
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    fieldValue: {
+        fontSize: 16,
+        color: COLORS.textMain,
+        lineHeight: 24,
+    },
+    input: {
+        backgroundColor: COLORS.backgroundAlt,
+        color: COLORS.textMain,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    bioInput: {
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    editButton: {
+        flex: 1,
+        backgroundColor: COLORS.accentBlue,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editButtonText: {
+        color: COLORS.textMain,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    saveButton: {
+        flex: 1,
+        backgroundColor: COLORS.accent,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    saveButtonText: {
+        color: COLORS.backgroundMain,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    cancelButton: {
+        flex: 1,
+        backgroundColor: COLORS.backgroundAlt,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    cancelButtonText: {
+        color: COLORS.textMuted,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+});

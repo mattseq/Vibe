@@ -3,6 +3,7 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
+import { FontAwesome } from "@expo/vector-icons";
 
 export default function Menu({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
@@ -43,9 +44,15 @@ export default function Menu({ navigation }) {
           onLongPressChatroom={(chatroom, x, y) => setContextMenu({ visible: true, chatroom, x, y })}
         />
         <View style={styles.footer}>
-          <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.footerTextAccent}>Profile</Text>
-          </Pressable>
+          <View style={{display: 'flex', flexDirection: 'row', gap: 10}}>
+            <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Settings')}>
+              <Text style={styles.footerTextAccent}><FontAwesome name="gear" size={24} color={COLORS.textMain} /></Text>
+            </Pressable>
+            <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Profile')}>
+              <Text style={styles.footerTextAccent}><FontAwesome name="user" size={24} color={COLORS.textMain} /></Text>
+            </Pressable>
+          </View>
+          
           <LogoutButton />
         </View>
       </View>
@@ -671,8 +678,8 @@ const styles = StyleSheet.create({
   },
   footerButtonAccent: {
     backgroundColor: COLORS.accentBlue,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 4,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
