@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, ActivityIndicator, Alert } from 'react-native';
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
@@ -16,12 +16,33 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (!user.emailVerified) {
+        await sendEmailVerification(user);
+        Alert.alert(
+          "Email not verified",
+          "We have sent a verification email to your inbox. Please verify your email before continuing."
+        );
+        await signOut(auth);
+        console.log("Not email verified")
+      } else {
+        // email verified
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+
+      
     } catch (err) {
       setError(err.message);
     }
@@ -41,13 +62,42 @@ export default function Login() {
         bio: "",
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
-        contentFilter: 'off',
-        darkMode: true
+        contentFilter: 'off'
       });
 
       console.log("Account created and Firestore profile added.");
+
+      await sendEmailVerification(user);
+
+      Alert.alert(
+        "Account created!",
+        "Please check your email inbox and verify your email before logging in."
+      );
+
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      setError("Please enter your email for password reset.");
+      return;
+    }
+    setError("");
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+      setResetEmail("");
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        setError("No account found with that email.");
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -62,29 +112,83 @@ export default function Login() {
         source={{ uri: "https://tenor.com/view/talk-with-gifs-gif-20291278.gif" }}
         style={styles.image}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={COLORS.textMuted}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={COLORS.textMuted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Pressable style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
-      </Pressable>
-      <Pressable style={styles.button} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Create new account</Text>
-      </Pressable>
+
+      {!showReset ? (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={COLORS.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={COLORS.textMuted}
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <Pressable style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Log In</Text>
+          </Pressable>
+          <Pressable style={styles.button} onPress={handleSignUp}>
+            <Text style={styles.buttonText}>Create new account</Text>
+          </Pressable>
+
+          <Pressable onPress={() => {
+            setShowReset(true);
+            setError("");
+            setResetSuccess(false);
+          }}>
+            <Text style={[styles.linkText, { marginTop: 20 }]}>Forgot password?</Text>
+          </Pressable>
+        </>
+      ) : (
+        <View style={{ width: '100%' }}>
+          {resetSuccess ? (
+            <Text style={[styles.successText, { marginBottom: 15 }]}>
+              Password reset email sent! Check your inbox and spam/junk folder
+            </Text>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+              />
+              <Pressable
+                style={styles.button}
+                onPress={handleResetPassword}
+                disabled={resetLoading}
+              >
+                {resetLoading ? (
+                  <ActivityIndicator color={COLORS.textOnAccentBlue} />
+                ) : (
+                  <Text style={styles.buttonText}>Send Reset Email</Text>
+                )}
+              </Pressable>
+            </>
+          )}
+          <Pressable
+            onPress={() => {
+              setShowReset(false);
+              setError("");
+              setResetSuccess(false);
+            }}
+          >
+            <Text style={[styles.linkText, { marginTop: 20 }]}>Back to login</Text>
+          </Pressable>
+        </View>
+      )}
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </ScrollView>
   );
@@ -143,5 +247,14 @@ const createStyles = (COLORS) => StyleSheet.create({
     color: COLORS.textOnAccentBlue,
     fontSize: 16,
     fontWeight: 'bold'
-  }
+  },
+  successText: {
+    color: COLORS.accentBlue,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  linkText: {
+    color: COLORS.accentBlue,
+    textAlign: 'center',
+  },
 });
