@@ -303,7 +303,7 @@ const createStyles = (COLORS) => StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: COLORS.backgroundAlt,
     },
     modalTitle: {
         fontSize: 18,
@@ -329,7 +329,7 @@ const createStyles = (COLORS) => StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: COLORS.backgroundAlt,
     },
     filterOptionSelected: {
         backgroundColor: COLORS.accent + '20',

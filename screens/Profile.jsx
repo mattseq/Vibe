@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
@@ -7,7 +7,19 @@ import { auth, db } from "../firebase";
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
 
-export default function Profile({ navigation }) {
+import * as Animatable from 'react-native-animatable';
+
+const AnimatablePressable = Animatable.createAnimatableComponent(Pressable)
+
+Animatable.initializeRegistryWithDefinitions({
+  strongPulse: {
+    0: { scale: 1 },
+    0.5: { scale: 1.3 },
+    1: { scale: 1 }
+  },
+});
+
+export default function Profile({ route, navigation }) {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
     const styles = createStyles(COLORS);
@@ -19,17 +31,20 @@ export default function Profile({ navigation }) {
     const [lastActive, setLastActive] = useState('')
     const [isEditing, setIsEditing] = useState(false);
 
+    const { userId } = route.params || {};
+    const isOwnProfile = !userId || userId == auth.currentUser.uid;
+
     const fetchUserProfile = async () => {
         const user = auth.currentUser;
         if (!user) return;
 
-        const userDocRef = doc(db, "users", user.uid);
+        const userDocRef = doc(db, "users", userId);
     
         try {
             const docSnap = await getDoc(userDocRef);
             if (docSnap.exists()) {
                 const userData = docSnap.data();
-                setDisplayName(userData.displayName || 'John Doe');
+                setDisplayName(userData.displayName);
                 setBio(userData.bio);
                 setEmail(userData.email);
                 setCreatedAt(userData.createdAt?.toDate().toDateString() || 'Unknown')
@@ -43,13 +58,13 @@ export default function Profile({ navigation }) {
     useEffect(() => {
         // set profile at the start
         fetchUserProfile();
-    }, []);
+    }, [userId]);
 
     const handleSaveChanges = async () => {
         const user = auth.currentUser;
         if (!user) return;
 
-        const userDocRef = doc(db, "users", user.uid);
+        const userDocRef = doc(db, "users", userId);
 
         try {
             await updateDoc(userDocRef, {
@@ -76,12 +91,12 @@ export default function Profile({ navigation }) {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profile</Text>
-                    <Pressable 
+                    <AnimatedButton 
                         style={styles.backButton} 
-                        onPress={() => navigation.goBack()}
+                        onPressAfterAnimation={() => navigation.goBack()}
                     >
                         <Text style={styles.backButtonText}>←</Text>
-                    </Pressable>
+                    </AnimatedButton>
                 </View>
 
                 <View style={styles.profileCard}>
@@ -149,25 +164,45 @@ export default function Profile({ navigation }) {
                     </View>
 
                     <View style={styles.actionButtons}>
-                        {isEditing ? (
-                            <>
-                                <Pressable style={styles.saveButton} onPress={handleSaveChanges}>
-                                    <Text style={styles.saveButtonText}>Save Changes</Text>
-                                </Pressable>
-                                <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </Pressable>
-                            </>
-                        ) : (
-                            <Pressable style={styles.editButton} onPress={() => setIsEditing(true)}>
-                                <Text style={styles.editButtonText}>Edit Profile</Text>
-                            </Pressable>
+                        { isOwnProfile && (
+                            isEditing ? (
+                                <>
+                                    <AnimatedButton style={styles.saveButton} onPressAfterAnimation={handleSaveChanges} animationType='pulse'>
+                                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                                    </AnimatedButton>
+                                    <AnimatedButton style={styles.cancelButton} onPressAfterAnimation={handleCancelEdit} animationType='pulse'>
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </AnimatedButton>
+                                </>
+                            ) : (
+                                <AnimatedButton style={styles.editButton} onPressAfterAnimation={() => setIsEditing(true)} animationType='pulse'>
+                                    <Text style={styles.editButtonText}>Edit Profile</Text>
+                                </AnimatedButton>
+                            )
                         )}
                     </View>
                 </View>
             </ScrollView>
         </SafeAreaView>
     );
+}
+
+function AnimatedButton({ animationType='strongPulse', onPressAfterAnimation, children, style }) {
+  const ref = useRef(null);
+
+  const handlePress = () => {
+    if (ref.current) {
+      ref.current.animate(animationType, 300).then(() => {
+        if (onPressAfterAnimation) onPressAfterAnimation();
+      });
+    }
+  };
+
+  return (
+    <AnimatablePressable ref={ref} style={style} onPress={handlePress}>
+      {children}
+    </AnimatablePressable>
+  );
 }
 
 const createStyles = (COLORS) => StyleSheet.create({
@@ -211,7 +246,7 @@ const createStyles = (COLORS) => StyleSheet.create({
         backgroundColor: COLORS.backgroundCard,
         borderRadius: 16,
         padding: 20,
-        shadowColor: COLORS.shadow,
+        shadowColor: COLORS.backgroundAlt,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

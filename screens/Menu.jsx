@@ -6,6 +6,17 @@ import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable
 import { FontAwesome } from "@expo/vector-icons";
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
+import * as Animatable from 'react-native-animatable'
+
+const AnimatablePressable = Animatable.createAnimatableComponent(Pressable)
+
+Animatable.initializeRegistryWithDefinitions({
+  strongPulse: {
+    0: { scale: 1 },
+    0.5: { scale: 1.3 },
+    1: { scale: 1 }
+  },
+});
 
 export default function Menu({ navigation }) {
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -38,12 +49,12 @@ export default function Menu({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={COLORS.backgroundMain} />
-      <View style={styles.mainLayout}>
+      <Animatable.View style={styles.mainLayout} animation="fadeIn">
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chat Rooms</Text>
-          <Pressable style={styles.addButton} onPress={openCreateModal}>
+          <AnimatedButton style={styles.addButton} onPressAfterAnimation={openCreateModal}>
             <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
+          </AnimatedButton>
         </View>
         <ChatroomList
           COLORS={COLORS}
@@ -53,17 +64,17 @@ export default function Menu({ navigation }) {
         />
         <View style={styles.footer}>
           <View style={{display: 'flex', flexDirection: 'row', gap: 10}}>
-            <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Settings')}>
+            <AnimatedButton style={styles.footerButtonAccent} onPressAfterAnimation={() => navigation.navigate('Settings')}>
               <Text style={styles.footerTextAccent}><FontAwesome name="gear" size={24} color={COLORS.textOnAccentBlue} /></Text>
-            </Pressable>
-            <Pressable style={styles.footerButtonAccent} onPress={() => navigation.navigate('Profile')}>
+            </AnimatedButton>
+            <AnimatedButton style={styles.footerButtonAccent} onPressAfterAnimation={() => navigation.navigate('Profile', { userId: auth.currentUser.uid })}>
               <Text style={styles.footerTextAccent}><FontAwesome name="user" size={24} color={COLORS.textOnAccentBlue} /></Text>
-            </Pressable>
+            </AnimatedButton>
           </View>
           
           <LogoutButton COLORS={COLORS} styles={styles} />
         </View>
-      </View>
+      </Animatable.View>
       <CreateChatModal
         COLORS={COLORS}
         styles={styles}
@@ -71,6 +82,7 @@ export default function Menu({ navigation }) {
         onClose={closeModal}
         editMode={editMode}
         chatroom={editChatroom}
+        navigation={navigation}
       />
       <ContextMenu
         COLORS={COLORS}
@@ -92,6 +104,24 @@ export default function Menu({ navigation }) {
   );
 }
 
+function AnimatedButton({ animationType='strongPulse', duration=300, onPressAfterAnimation, children, style }) {
+  const ref = useRef(null);
+
+  const handlePress = () => {
+    if (ref.current) {
+      ref.current.animate(animationType, duration).then(() => {
+        if (onPressAfterAnimation) onPressAfterAnimation();
+      });
+    }
+  };
+
+  return (
+    <AnimatablePressable ref={ref} style={style} onPress={handlePress}>
+      {children}
+    </AnimatablePressable>
+  );
+}
+
 function LogoutButton({ COLORS, styles }) {
   const handleLogout = async () => {
     try {
@@ -107,9 +137,9 @@ function LogoutButton({ COLORS, styles }) {
     }
   };
 
-  return <Pressable style={styles.footerButton} onPress={handleLogout}>
+  return <AnimatedButton style={styles.footerButton} onPressAfterAnimation={handleLogout}>
     <Text style={styles.footerText}>Log out</Text>
-  </Pressable>;
+  </AnimatedButton>;
 }
 
 function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
@@ -227,7 +257,7 @@ function ContextMenu({ COLORS, styles, visible, x, y, onClose, onSettings, onDel
 }
 
 
-function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom }) {
+function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom, navigation }) {
   const [chatName, setChatName] = useState('');
   const [participantQuery, setParticipantQuery] = useState('');
   const [possibleParticipants, setPossibleParticipants] = useState([]);
@@ -364,6 +394,7 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom 
                 key={user.id}
                 style={styles.selectedParticipant}
                 onPress={() => handleRemoveParticipant(user)}
+                onLongPress={ () => {navigation.navigate('Profile', {userId: user.id}); onClose()} }
               >
                 <Text style={styles.selectedParticipantText}>{user.displayName} ✕</Text>
               </TouchableOpacity>
@@ -377,6 +408,7 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom 
               <TouchableOpacity
                 style={styles.participantItem}
                 onPress={() => handleSelectParticipant(item)}
+                onLongPress={ () => {navigation.navigate('Profile', {userId: item.id}); onClose()} }
               >
                 <Text style={styles.participantNameModal}>{item.displayName}</Text>
               </TouchableOpacity>
@@ -463,11 +495,11 @@ const createStyles = (COLORS) => StyleSheet.create({
   chatroomCard: {
     padding: 16,
     backgroundColor: COLORS.backgroundAlt,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: COLORS.shadow,
+    shadowColor: COLORS.border,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

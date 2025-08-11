@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswor
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, ActivityIndicator, Alert } from 'react-native';
+import * as Animatable from 'react-native-animatable'
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
