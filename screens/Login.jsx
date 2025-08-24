@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { client, account, databases } from "../appwrite";
+import { Permission, Role } from "appwrite";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, ActivityIndicator, Alert } from 'react-native';
 import * as Animatable from 'react-native-animatable'
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
 
-export default function Login() {
+export default function Login({ navigation, route }) {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
   const styles = createStyles(COLORS);
@@ -22,84 +21,73 @@ export default function Login() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError("");
-    
+
+    await client.ping(); // ping bc idk
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      if (!user.emailVerified) {
-        await sendEmailVerification(user);
-        Alert.alert(
-          "Email not verified",
-          "We have sent a verification email to your inbox. Please verify your email before continuing."
-        );
-        await signOut(auth);
-        console.log("Not email verified")
-      } else {
-        // email verified
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-
-      
+      await account.createEmailPasswordSession(email, password);
+      // no email verification logic here yet
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Login failed");
     }
+    // navigation.navigate('Menu');
+    route.params.checkSession();
   };
 
   const handleSignUp = async () => {
     setError("");
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Create Firestore user document
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        displayName: "",
-        bio: "",
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-        contentFilter: 'off'
-      });
-
-      console.log("Account created and Firestore profile added.");
-
-      await sendEmailVerification(user);
-
-      Alert.alert(
-        "Account created!",
-        "Please check your email inbox and verify your email before logging in."
+      const user = await account.create(
+        "unique()",
+        email,
+        password
       );
 
+      // user document creation
+      await databases.createDocument(
+        "main",
+        "users",
+        user.$id,
+        {
+          email: user.email,
+          displayName: "noob",
+          bio: "I'm new here!",
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          contentFilter: 'off'
+        }
+      );
+
+      // no email verification logic here yet
+      Alert.alert("Account created!", "Please verify your email before logging in.");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Sign up failed");
     }
   };
 
+  // dont forget to fix password reset function later
   const handleResetPassword = async () => {
-    if (!resetEmail) {
-      setError("Please enter your email for password reset.");
-      return;
-    }
-    setError("");
-    setResetLoading(true);
-    try {
-      await sendPasswordResetEmail(auth, resetEmail);
-      setResetSuccess(true);
-      setResetEmail("");
-    } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        setError("No account found with that email.");
-      } else {
-        setError(err.message);
-      }
-    } finally {
-      setResetLoading(false);
-    }
+    // if (!resetEmail) {
+    //   setError("Please enter your email for password reset.");
+    //   return;
+    // }
+    // setError("");
+    // setResetLoading(true);
+    // try {
+    //   await sendPasswordResetEmail(auth, resetEmail);
+    //   setResetSuccess(true);
+    //   setResetEmail("");
+    // } catch (err) {
+    //   if (err.code === 'auth/user-not-found') {
+    //     setError("No account found with that email.");
+    //   } else {
+    //     setError(err.message);
+    //   }
+    // } finally {
+    //   setResetLoading(false);
+    // }
+    
   };
 
   return (

@@ -1,7 +1,6 @@
 import { React, useEffect, useRef, useState, useContext} from "react";
-import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { account, databases } from "../appwrite";
+import { Query, Permission, Role } from "appwrite";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { FontAwesome } from "@expo/vector-icons";
 import { ThemeContext } from '../context/ThemeContext';
@@ -18,7 +17,7 @@ Animatable.initializeRegistryWithDefinitions({
   },
 });
 
-export default function Menu({ navigation }) {
+export default function Menu({ navigation, route }) {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
   const styles = createStyles(COLORS);
@@ -67,12 +66,15 @@ export default function Menu({ navigation }) {
             <AnimatedButton style={styles.footerButtonAccent} onPressAfterAnimation={() => navigation.navigate('Settings')}>
               <Text style={styles.footerTextAccent}><FontAwesome name="gear" size={24} color={COLORS.textOnAccentBlue} /></Text>
             </AnimatedButton>
-            <AnimatedButton style={styles.footerButtonAccent} onPressAfterAnimation={() => navigation.navigate('Profile', { userId: auth.currentUser.uid })}>
+            <AnimatedButton style={styles.footerButtonAccent} onPressAfterAnimation={async () => {
+              const user = await account.get();
+              navigation.navigate('Profile', { userId: user.$id });
+            }}>
               <Text style={styles.footerTextAccent}><FontAwesome name="user" size={24} color={COLORS.textOnAccentBlue} /></Text>
             </AnimatedButton>
           </View>
           
-          <LogoutButton COLORS={COLORS} styles={styles} />
+          <LogoutButton COLORS={COLORS} styles={styles} checkSession={route.params.checkSession} />
         </View>
       </Animatable.View>
       <CreateChatModal
@@ -95,9 +97,18 @@ export default function Menu({ navigation }) {
           setContextMenu({ ...contextMenu, visible: false });
           openEditModal(contextMenu.chatroom);
         }}
-        onDelete={() => {
-          deleteDoc(doc(db, "chatRooms", contextMenu.chatroom.id))
-          setContextMenu({ ...contextMenu, visible: false });
+        onDelete={async () => {
+          try {
+            await databases.deleteDocument(
+              "main",
+              "chatrooms",
+              contextMenu.chatroom.$id
+            );
+            setContextMenu({ ...contextMenu, visible: false });
+          } catch (error) {
+            console.error("Error deleting chatroom:", error);
+            setContextMenu({ ...contextMenu, visible: false });
+          }
         }}
       />
     </SafeAreaView>
@@ -122,21 +133,24 @@ function AnimatedButton({ animationType='strongPulse', duration=300, onPressAfte
   );
 }
 
-function LogoutButton({ COLORS, styles }) {
+function LogoutButton({ COLORS, styles, navigation, checkSession }) {
   const handleLogout = async () => {
     try {
-      updateDoc(doc(db, "users", auth.currentUser?.uid), {
-        lastActive: serverTimestamp()
-      });
-
-      await signOut(auth);
+      const user = await account.get();
+      // await databases.updateDocument(
+      //   "main",
+      //   "users",
+      //   user.$id,
+      //   { lastActive: new Date().toISOString() }
+      // );
+      await account.deleteSession("current");
+      // navigation.navigate('Login');
+      checkSession();
       console.log("User logged out successfully");
-
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
-
   return <AnimatedButton style={styles.footerButton} onPressAfterAnimation={handleLogout}>
     <Text style={styles.footerText}>Log out</Text>
   </AnimatedButton>;
@@ -145,59 +159,67 @@ function LogoutButton({ COLORS, styles }) {
 function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
   const [chatrooms, setChatrooms] = useState([]);
   const [usernames, setUsernames] = useState({});
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const q = query(
-      collection(db, "chatRooms"),
-      where("participants", "array-contains", user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      const rooms = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setChatrooms(rooms);
-      console.log("Fetched rooms:", rooms);
-      
-      // extract user IDs from all chatrooms
-      const participantIds = new Set();
-      rooms.forEach(room => {
-        room.participants.forEach(id => participantIds.add(id));
-      });
-
-      // convert set to array
-      const allUserIds = Array.from(participantIds);
-
-      // fetch each user's displayName if not already loaded
-      const newUsernames = { ...usernames };
-      
-      await Promise.all(
-        allUserIds.map(async (userId) => {
-          if (!newUsernames[userId]) {
-            const userRef = doc(db, "users", userId);
-            const userSnap = await getDoc(userRef);
-            newUsernames[userId] = userSnap.exists()
-              ? userSnap.data().displayName
-              : "Unknown User";
-          }
-        })
-      );
-
-      setUsernames(newUsernames);
-    });
-
-    return () => unsubscribe();
+    let isMounted = true;
+    async function fetchRooms() {
+      try {
+        const user = await account.get();
+        setCurrentUserId(user.$id);
+        const response = await databases.listDocuments(
+          "main",
+          "chatrooms",
+          [
+            Query.contains("participants", user.$id)
+          ]
+        );
+        if (!isMounted) return;
+        const rooms = response.documents;
+        setChatrooms(rooms);
+        // extract user IDs from all chatrooms
+        const participantIds = new Set();
+        rooms.forEach(room => {
+          room.participants.forEach(id => participantIds.add(id));
+        });
+        // convert set to array
+        const allUserIds = Array.from(participantIds);
+        // fetch each user's displayName if not already loaded
+        const newUsernames = { ...usernames };
+        await Promise.all(
+          allUserIds.map(async (userId) => {
+            if (!newUsernames[userId]) {
+              try {
+                const userDoc = await databases.getDocument(
+                  "main",
+                  "users",
+                  userId
+                );
+                newUsernames[userId] = userDoc.displayName || "Unknown User";
+              } catch {
+                newUsernames[userId] = "Unknown User";
+              }
+            }
+          })
+        );
+        setUsernames(newUsernames);
+      } catch (error) {
+        console.error("Error fetching chatrooms:", error);
+      }
+    }
+    fetchRooms();
+    const interval = setInterval(fetchRooms, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handlePress = (chatroom) => {
     navigation.navigate('ChatRoom', {
-      chatroomId: chatroom.id,
+      chatroomId: chatroom.$id,
       chatroomName: chatroom.chatName,
-      chatroomParticipants: chatroom.participants.filter(id => id !== auth.currentUser.uid)
+      chatroomParticipants: chatroom.participants.filter(id => id !== currentUserId)
         .map(id => usernames[id] || "Loading...").join(', ')
     });
   };
@@ -212,20 +234,19 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
       ) : (
         chatrooms.map(room => (
           <Pressable 
-            key={room.id} 
+            key={room.$id} 
             style={styles.chatroomCard}
             onPress={() => handlePress(room)}
             onLongPress={e => {
               const x = e.nativeEvent.pageX;
               const y = e.nativeEvent.pageY;
-              // Pass usernames mapping with the chatroom
               onLongPressChatroom({ ...room, usernames }, x, y);
             }}
           >
             <Text style={styles.chatName}>{room.chatName || "Unnamed Chat"}</Text>
             <Text style={styles.participants}>
               {room.participants
-                .filter(id => id !== auth.currentUser.uid)
+                .filter(id => id !== currentUserId)
                 .map((id, i, arr) => (
                   <Text key={id} style={styles.participantName}>
                     {usernames[id] || "Loading..."}
@@ -269,7 +290,7 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom,
       setChatName(chatroom.chatName || '');
       setSelectedParticipants(
         chatroom.participants
-          .filter(id => id !== auth.currentUser.uid)
+          .filter(id => id !== chatroom.createdBy)
           .map(id => ({ id, displayName: chatroom.usernames?.[id] || "Unknown User" }))
       );
     } else if (!visible) {
@@ -279,28 +300,32 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom,
   }, [editMode, chatroom, visible]);
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const q = query(
-      collection(db, "users"),
-      where("displayName", ">=", participantQuery),
-      where("displayName", "<=", participantQuery + "\uf8ff"),
-      limit(10)
-    );
-
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      const displayNames = querySnapshot.docs
-      .filter(doc => doc.id !== user.uid) // exclude current user
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setPossibleParticipants(displayNames);
-      console.log("Fetched participants:", participantQuery, displayNames);
-    });
-
-    return () => unsubscribe();
+    let isMounted = true;
+    async function fetchUsers() {
+      try {
+        const currentUser = await account.get();
+        const response = await databases.listDocuments(
+          "main",
+          "users",
+          [
+            Query.startsWith("displayName", participantQuery)
+          ]
+        );
+        if (!isMounted) return;
+        const displayNames = response.documents
+          .filter(doc => doc.$id !== currentUser.$id)
+          .map(doc => ({
+            id: doc.$id,
+            ...doc
+          }));
+        setPossibleParticipants(displayNames);
+        console.log("Fetched participants:", participantQuery, displayNames);
+      } catch (error) {
+        console.error("Error fetching participants:", error);
+      }
+    }
+    fetchUsers();
+    return () => { isMounted = false; };
   }, [participantQuery]);
 
   // Filter participants by query
@@ -320,48 +345,56 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom,
     setSelectedParticipants(selectedParticipants.filter(u => u.id !== user.id));
   };
 
-  const handleCreateOrUpdate = () => {
-    const user = auth.currentUser;
-    if (!user) return;
-    
-    if (editMode && chatroom) {
-      // Update chatroom
-      const chatRoomData = {
-        chatName: chatName || "Unnamed Chat",
-        participants: [user.uid, ...selectedParticipants.map(u => u.id)]
+  async function handleCreateOrUpdate() {
+    try {
+      const user = await account.get();
+      const userIds = [user.$id, ...selectedParticipants.map(u => u.id)];
+      const permissions = [
+        ...userIds.map(id => Permission.read(Role.user(id))),
+        ...userIds.map(id => Permission.write(Role.user(id))),
+        ...userIds.map(id => Permission.update(Role.user(id))),
+        ...userIds.map(id => Permission.delete(Role.user(id)))
+      ];
+      console.log("participants:", userIds);
+      if (editMode && chatroom) {
+        // Update chatroom
+        const chatRoomData = {
+          chatName: chatName || "Unnamed Chat",
+          participants: userIds
+        };
+        await databases.updateDocument(
+          "main",
+          "chatrooms",
+          chatroom.$id,
+          chatRoomData,
+          permissions
+        );
+        console.log("Chat room updated successfully");
+      } else {
+        // Create chatroom
+        const chatRoomData = {
+          chatName: chatName || "Unnamed Chat",
+          participants: userIds,
+          createdAt: new Date().toISOString(),
+          createdBy: user.$id
+        };
+        await databases.createDocument(
+          "main",
+          "chatrooms",
+          "unique()",
+          chatRoomData,
+          // permissions
+        );
+        console.log("Chat room created successfully");
       }
-
-      updateDoc(doc(db, "chatRooms", chatroom.id), chatRoomData)
-        .then(() => {
-          console.log("Chat room updated successfully");
-        })
-        .catch((error) => {
-          console.error("Error updating chat room:", error);
-        }
-      );
-
-    } else {
-      // Create chatroom
-      const chatRoomData = {
-        chatName: chatName || "Unnamed Chat",
-        participants: [user.uid, ...selectedParticipants.map(u => u.id)],
-        createdAt: serverTimestamp(),
-        createdBy: user.uid
-      };
-
-      addDoc(collection(db, "chatRooms"), chatRoomData)
-        .then(() => {
-          console.log("Chat room created successfully");
-        })
-        .catch((error) => {
-          console.error("Error creating chat room:", error);
-        });
+    } catch (error) {
+      console.error("Error creating/updating chat room:", error);
     }
     onClose();
     setChatName('');
     setParticipantQuery('');
     setSelectedParticipants([]);
-  };
+  }
 
   return (
     <Modal

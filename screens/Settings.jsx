@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, Text, View, StatusBar, SafeAreaView, Pressable, ScrollView, Switch, Modal, TouchableOpacity } from 'react-native';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { account, databases } from "../appwrite";
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
@@ -34,20 +33,17 @@ export default function Settings({ navigation }) {
     const handleFilterChange = async (filter) => {
         setContentFilter(filter);
         setShowFilterModal(false);
-        
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDoc = doc(db, "users", user.uid);
-        
         try {
-            await updateDoc(userDoc, {
-                contentFilter: filter
-            });
+            const user = await account.get();
+            await databases.updateDocument(
+                "main",
+                "users",
+                user.$id,
+                { contentFilter: filter }
+            );
         } catch (error) {
             console.error("Error changing content filter: ", error);
         }
-
         console.log('Content filter changed to:', filter);
     };
 
@@ -57,22 +53,18 @@ export default function Settings({ navigation }) {
     };
 
     const fetchSettings = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDoc = doc(db, "users", user.uid);
-
         try {
-            const docSnap = await getDoc(userDoc);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setContentFilter(data.contentFilter || 'medium');
-            }
+            const user = await account.get();
+            const userDoc = await databases.getDocument(
+                "main",
+                "users",
+                user.$id
+            );
+            setContentFilter(userDoc.contentFilter || 'medium');
         } catch (error) {
-            console.error("Error fetching settings from Firebase: ", error);
+            console.error("Error fetching settings from Appwrite: ", error);
         }
-
-        setIsDarkMode(theme == 'dark')
+        setIsDarkMode(theme == 'dark');
     }
 
     useEffect(() => {

@@ -1,7 +1,6 @@
 import { React, useEffect, useRef, useState, useContext } from "react";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, deleteDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { account, databases } from "../appwrite";
 import Constants from 'expo-constants';
 
 import { ThemeContext } from '../context/ThemeContext';
@@ -61,13 +60,22 @@ export default function ChatRoom({ route, navigation }) {
         y={contextMenu.y}
         onClose={() => setContextMenu({ ...contextMenu, visible: false })}
         onViewSenderProfile={() => navigation.navigate('Profile', { userId: contextMenu.message.senderId })}
-        onDelete={() => {
-          if (contextMenu.message.senderId == auth.currentUser.uid) {
-            deleteDoc(doc(db, "chatRooms", chatroomId, "messages", contextMenu.message.id))
-            setContextMenu({ ...contextMenu, visible: false });
-          } else {
-            Alert.alert("... shall make no law ... abridging the freedom of speech ...")
-            setContextMenu({ ...contextMenu, visible: false });
+        onDelete={async () => {
+          try {
+            const user = await account.get();
+            if (contextMenu.message.senderId === user.$id) {
+              await databases.deleteDocument(
+                "main",
+                "messages",
+                contextMenu.message.id
+              );
+              setContextMenu({ ...contextMenu, visible: false });
+            } else {
+              Alert.alert("... shall make no law ... abridging the freedom of speech ...");
+              setContextMenu({ ...contextMenu, visible: false });
+            }
+          } catch (error) {
+            Alert.alert("Error deleting message", error.message);
           }
         }}
       />
@@ -82,32 +90,33 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
 
   useEffect(() => {
     if (!roomId) return;
-
-    let unsubscribe;
-    try {
-      const q = query(
-        collection(db, "chatRooms", roomId, "messages"),
-        orderBy("timestamp")
-      );
-
-      unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const msgs = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+    let isMounted = true;
+    async function fetchMessages() {
+      try {
+        const response = await databases.listDocuments(
+          "main",
+          "messages",
+          [
+            { field: "roomId", operator: "equal", value: roomId },
+            { orderField: "timestamp", orderType: "asc" }
+          ]
+        );
+        if (!isMounted) return;
+        const msgs = response.documents;
         setMessages(msgs);
-
         // Get all unique senderIds
         const senderIds = [...new Set(msgs.map(m => m.senderId).filter(Boolean))];
-        // Fetch display names
         getDisplayNames(senderIds).then(setNames);
-      });
-    } catch (error) {
-      console.error("Error fetching messages:", error);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
     }
-
+    fetchMessages();
+    // Optionally, set up polling for real-time updates
+    const interval = setInterval(fetchMessages, 3000);
     return () => {
-      if (unsubscribe) unsubscribe();
+      isMounted = false;
+      clearInterval(interval);
     };
   }, [roomId]);
 
@@ -115,21 +124,24 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
     flatListRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
+  const [currentUserId, setCurrentUserId] = useState(null);
+  useEffect(() => {
+    account.get().then(user => setCurrentUserId(user.$id)).catch(() => setCurrentUserId(null));
+  }, []);
+
   if (!roomId) {
     return (
       <View style={styles.noRoomSelected}>
         <Text>Select a chat room to see messages</Text>
       </View>
-    )
+    );
   }
-
-  const currentUserId = auth.currentUser?.uid;
 
   return (
     <FlatList
       ref={flatListRef}
       data={messages}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => item.$id}
       contentContainerStyle={{ paddingBottom: 10 }}
       renderItem={({ item }) => (
         <Pressable style={[
@@ -139,7 +151,7 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
           onLongPress={e => {
             const x = e.nativeEvent.pageX;
             const y = e.nativeEvent.pageY;
-            onLongPressMessage({ ...item }, x, y);
+            onLongPressMessage({ ...item, id: item.$id }, x, y);
           }}
         >
           <Text style={styles.senderName}>{names[item.senderId] || "Unknown User"}</Text>
@@ -155,21 +167,20 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
 async function getDisplayNames(userIds) {
   const ids = Array.isArray(userIds) ? userIds : [userIds];
   const results = {};
-
   await Promise.all(
     ids.map(async (userId) => {
       try {
-        const userRef = doc(db, "users", userId);
-        const userSnap = await getDoc(userRef);
-        results[userId] = userSnap.exists()
-          ? userSnap.data().displayName
-          : "Unknown User";
+        const userDoc = await databases.getDocument(
+          "main",
+          "users",
+          userId
+        );
+        results[userId] = userDoc.displayName || "Unknown User";
       } catch {
         results[userId] = "Unknown User";
       }
     })
   );
-
   return results;
 }
 
@@ -199,28 +210,29 @@ function Gifs({ COLORS, styles, currentRoomId }) {
 
   const API_KEY = Constants.expoConfig.extra.klipy.apiKey;
   const BASE = 'https://api.klipy.com/api/v1';
-  const customer_id = auth.currentUser?.uid;
+  const [customerId, setCustomerId] = useState(null);
+  useEffect(() => {
+    account.get().then(user => setCustomerId(user.$id)).catch(() => setCustomerId(null));
+  }, []);
 
   async function fetchGifs(searchQuery = '', nextPage = 1, append = false) {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    userDocRef = doc(db, "users", user.uid);
     let contentFilter = 'off';
-
-    try {
-      const userDocSnap = await getDoc(userDocRef);
-      if (userDocSnap.exists()) {
-        const data = userDocSnap.data();
-        contentFilter = data.contentFilter || 'off';
+    if (customerId) {
+      try {
+        const userDoc = await databases.getDocument(
+          "main",
+          "users",
+          customerId
+        );
+        contentFilter = userDoc.contentFilter || 'off';
+      } catch (error) {
+        console.error("Error fetching user settings:", error);
       }
-    } catch (error) {
-      console.error("Error fetching user settings:", error);
     }
 
     setLoading(true);
     const endpoint = searchQuery
-      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customer_id}&content_filter=${contentFilter}&per_page=50&page=${nextPage}`
+      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customerId}&content_filter=${contentFilter}&per_page=50&page=${nextPage}`
       : `${BASE}/${API_KEY}/gifs/trending?per_page=50`;
 
     try {
@@ -267,21 +279,31 @@ function Gifs({ COLORS, styles, currentRoomId }) {
 
   async function handleSendGif(gif) {
     const gifUrl = gif.file.sm.gif.url;
-    const user = auth.currentUser;
-
-    if (!user) {
-      console.error("User not authenticated")
-      return;
+    let userId = customerId;
+    if (!userId) {
+      try {
+        const user = await account.get();
+        userId = user.$id;
+      } catch {
+        console.error("User not authenticated");
+        return;
+      }
     }
 
     try {
-      await addDoc(collection(db, 'chatRooms', currentRoomId, 'messages'), {
-        senderId: user.uid,
-        gifUrl: gifUrl,
-        timestamp: serverTimestamp()
-      });
+      await databases.createDocument(
+        "main",
+        "messages",
+        "unique()",
+        {
+          senderId: userId,
+          gifUrl: gifUrl,
+          roomId: currentRoomId,
+          timestamp: new Date().toISOString()
+        }
+      );
     } catch (error) {
-      console.error("Error sending GIF message")
+      console.error("Error sending GIF message", error);
     }
   }
 

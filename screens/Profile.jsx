@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, onSnapshot, orderBy, addDoc, limit, deleteDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { account, databases } from "../appwrite";
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
@@ -32,26 +31,27 @@ export default function Profile({ route, navigation }) {
     const [isEditing, setIsEditing] = useState(false);
 
     const { userId } = route.params || {};
-    const isOwnProfile = !userId || userId == auth.currentUser.uid;
+    const [currentUserId, setCurrentUserId] = useState(null);
+    useEffect(() => {
+        account.get().then(user => setCurrentUserId(user.$id)).catch(() => setCurrentUserId(null));
+    }, []);
+    const isOwnProfile = !userId || userId === currentUserId;
 
     const fetchUserProfile = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDocRef = doc(db, "users", userId);
-    
+        if (!userId) return;
         try {
-            const docSnap = await getDoc(userDocRef);
-            if (docSnap.exists()) {
-                const userData = docSnap.data();
-                setDisplayName(userData.displayName);
-                setBio(userData.bio);
-                setEmail(userData.email);
-                setCreatedAt(userData.createdAt?.toDate().toDateString() || 'Unknown')
-                setLastActive(userData.lastActive?.toDate().toDateString() || 'Unknown')
-            }
+            const userDoc = await databases.getDocument(
+                "main",
+                "users",
+                userId
+            );
+            setDisplayName(userDoc.displayName);
+            setBio(userDoc.bio);
+            setEmail(userDoc.email);
+            setCreatedAt(userDoc.createdAt ? new Date(userDoc.createdAt).toDateString() : 'Unknown');
+            setLastActive(userDoc.lastActive ? new Date(userDoc.lastActive).toDateString() : 'Unknown');
         } catch (error) {
-            console.error("Error fetching user profile: ", error)
+            console.error("Error fetching user profile: ", error);
         }
     }
 
@@ -61,21 +61,21 @@ export default function Profile({ route, navigation }) {
     }, [userId]);
 
     const handleSaveChanges = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDocRef = doc(db, "users", userId);
-
+        if (!userId) return;
         try {
-            await updateDoc(userDocRef, {
-                displayName: displayName,
-                bio: bio,
-                lastActive: serverTimestamp()
-            });
+            await databases.updateDocument(
+                "main",
+                "users",
+                userId,
+                {
+                    displayName: displayName,
+                    bio: bio,
+                    lastActive: new Date().toISOString()
+                }
+            );
         } catch (error) {
             console.error("Error updating profile: ", error);
         }
-
         setIsEditing(false);
     };
 

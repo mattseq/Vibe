@@ -3,8 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from './firebase';
+import { account } from './appwrite';
 import Login from './screens/Login';
 import Menu from './screens/Menu';
 import ChatRoom from './screens/ChatRoom';
@@ -19,13 +18,27 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+  const checkSession = async () => {
+    try {
+      const user = await account.get();
+      setUser(user.status ? user : null);
+    } catch {
+      setUser(null);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    let unsubscribed = false;
+    checkSession();
+    const interval = setInterval(() => {
+      if (!unsubscribed) checkSession();
+    }, 60000);
+    return () => {
+      unsubscribed = true;
+      clearInterval(interval);
+    };
   }, []);
 
   if (loading) {
@@ -38,34 +51,34 @@ export default function App() {
         <NavigationContainer>
           <Stack.Navigator>
             {user ? (
-              // User is signed in
               <>
-              <Stack.Screen
-                name="Menu"
-                component={Menu}
-                options={{ title: 'Menu', headerShown: false }}
-              />
-              <Stack.Screen
-                name="Profile"
-                component={Profile}
-                options={({ route }) => ({ title: `Profile: ${route.params.id}`, headerShown: false })}
-              />
-              <Stack.Screen
-                name="Settings"
-                component={Settings}
-                options={{ title: 'Settings', headerShown: false }}
-              />
-              <Stack.Screen
-                name="ChatRoom"
-                component={ChatRoom}
-                options={({ route }) => ({ title: `Chat: ${route.params.chatroomName}`, headerShown: false })}
-              />
-            </>
+                <Stack.Screen
+                  name="Menu"
+                  component={Menu}
+                  initialParams={{ checkSession }}
+                  options={{ title: 'Menu', headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Profile"
+                  component={Profile}
+                  options={({ route }) => ({ title: `Profile: ${route.params.userId}`, headerShown: false })}
+                />
+                <Stack.Screen
+                  name="Settings"
+                  component={Settings}
+                  options={{ title: 'Settings', headerShown: false }}
+                />
+                <Stack.Screen
+                  name="ChatRoom"
+                  component={ChatRoom}
+                  options={({ route }) => ({ title: `Chat: ${route.params.chatroomName}`, headerShown: false })}
+                />
+              </>
             ) : (
-              // User is not signed in
               <Stack.Screen
                 name="Login"
                 component={Login}
+                initialParams={{ checkSession }}
                 options={{ headerShown: false }}
               />
             )}
