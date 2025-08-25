@@ -1,6 +1,7 @@
 import { React, useEffect, useRef, useState, useContext } from "react";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { account, databases } from "../appwrite";
+import { client, account, databases } from "../appwrite";
+import { Query } from "appwrite";
 import Constants from 'expo-constants';
 
 import { ThemeContext } from '../context/ThemeContext';
@@ -88,36 +89,44 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
   const [names, setNames] = useState({});
   const flatListRef = useRef(null);
 
+  async function fetchMessages() {
+    try {
+      const response = await databases.listDocuments(
+        "main",
+        "messages",
+        [
+          Query.equal("roomId", roomId),
+          Query.orderAsc("timestamp")
+        ]
+      );
+      const msgs = response.documents;
+      setMessages(msgs);
+      // get all unique senderIds
+      const senderIds = [...new Set(msgs.map(m => m.senderId).filter(Boolean))];
+      getDisplayNames(senderIds).then(setNames);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+  }
+
   useEffect(() => {
     if (!roomId) return;
-    let isMounted = true;
-    async function fetchMessages() {
-      try {
-        const response = await databases.listDocuments(
-          "main",
-          "messages",
-          [
-            { field: "roomId", operator: "equal", value: roomId },
-            { orderField: "timestamp", orderType: "asc" }
-          ]
-        );
-        if (!isMounted) return;
-        const msgs = response.documents;
-        setMessages(msgs);
-        // Get all unique senderIds
-        const senderIds = [...new Set(msgs.map(m => m.senderId).filter(Boolean))];
-        getDisplayNames(senderIds).then(setNames);
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-      }
-    }
+
+    // initial fetch
     fetchMessages();
-    // Optionally, set up polling for real-time updates
-    const interval = setInterval(fetchMessages, 3000);
+
+    // subscribe for realtime updates
+    const unsubscribe = client.subscribe('databases.main.collections.messages.documents', response => {
+      // Log when a new file is uploaded
+      console.log(response.payload);
+      if (response.payload.roomId === roomId) {
+        fetchMessages();
+      }
+    });
+
     return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
+      unsubscribe();
+    }
   }, [roomId]);
 
   useEffect(() => {
@@ -280,6 +289,7 @@ function Gifs({ COLORS, styles, currentRoomId }) {
   async function handleSendGif(gif) {
     const gifUrl = gif.file.sm.gif.url;
     let userId = customerId;
+
     if (!userId) {
       try {
         const user = await account.get();
@@ -289,6 +299,8 @@ function Gifs({ COLORS, styles, currentRoomId }) {
         return;
       }
     }
+
+    console.log("Sending GIF message:", gifUrl, "to room:", currentRoomId);
 
     try {
       await databases.createDocument(
