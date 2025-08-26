@@ -74,7 +74,10 @@ _Other libraries and tools may have been used for UI, navigation, and API integr
 ## Acknowledgements
 
 - **KLIPY:**  
-  Special thanks to KLIPY for their free and unlimited GIF API, powering all chat content.
+    Special thanks to KLIPY for their free and unlimited GIF API, powering all chat content.
 
 - **Appwrite & GitHub Education:**  
-  Grateful to Appwrite and GitHub Education for providing free backend resources to students and making this project possible.
+    Grateful to Appwrite and GitHub Education for providing free backend resources to students and making this project possible.
+
+- **Google Firebase:**  
+	Thanks to Google Firebase for providing the initial backend infrastructure and helping this project get started.
