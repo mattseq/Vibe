@@ -1,6 +1,6 @@
 import { React, useEffect, useRef, useState, useContext } from "react";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { client, account, databases } from "../appwrite";
+import { client, account, databases, functions } from "../appwrite";
 import { Query } from "appwrite";
 import Constants from 'expo-constants';
 
@@ -239,16 +239,32 @@ function Gifs({ COLORS, styles, currentRoomId }) {
       }
     }
 
+    // change later to use environment variable
+    const KLIPY_API_FUNCTION_ID = "klipy-api";
+    // prepare body
+    const body = JSON.stringify({
+      query: searchQuery,
+      contentFilter,
+      page: nextPage
+    });
+
     setLoading(true);
-    const endpoint = searchQuery
-      ? `${BASE}/${API_KEY}/gifs/search?q=${encodeURIComponent(searchQuery)}&customer_id=${customerId}&content_filter=${contentFilter}&per_page=50&page=${nextPage}`
-      : `${BASE}/${API_KEY}/gifs/trending?per_page=50`;
 
     try {
-      const response = await fetch(endpoint);
-      console.log("Fetching GIFs from:", endpoint);
-      const result = await response.json();
+      // call appwrite function
+      const response = await functions.createExecution(
+        KLIPY_API_FUNCTION_ID,
+        body,
+        false,
+        undefined,
+        "POST",
+        { "Content-Type": "application/json" }
+      );
 
+      // parse to json
+      const result = JSON.parse(response.responseBody);
+
+      // do stuff with result
       if(result.result && result.data?.data){
         if (searchQuery) {
           setGifs(prev => append ? [...prev, ...result.data.data] : result.data.data);

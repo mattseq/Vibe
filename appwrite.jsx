@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Storage } from "appwrite";
+import { Client, Account, Databases, Storage, Functions } from "appwrite";
 import Constants from 'expo-constants';
 
 const client = new Client();
@@ -13,5 +13,6 @@ client
 const account = new Account(client);
 const databases = new Databases(client);
 const storage = new Storage(client);
+const functions = new Functions(client);
 
-export { client, account, databases, storage };
+export { client, account, databases, storage, functions };
