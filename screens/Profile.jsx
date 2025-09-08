@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { Image, ActivityIndicator, Alert } from 'react-native';
 import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { account, databases } from "../appwrite";
+import { account, databases, storage } from "../appwrite";
+import { ID } from 'appwrite';
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';
@@ -19,6 +22,9 @@ Animatable.initializeRegistryWithDefinitions({
 });
 
 export default function Profile({ route, navigation }) {
+    // Profile picture state
+    const [profilePicUrl, setProfilePicUrl] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
     const styles = createStyles(COLORS);
@@ -50,10 +56,83 @@ export default function Profile({ route, navigation }) {
             setEmail(userDoc.email);
             setCreatedAt(userDoc.createdAt ? new Date(userDoc.createdAt).toDateString() : 'Unknown');
             setLastActive(userDoc.lastActive ? new Date(userDoc.lastActive).toDateString() : 'Unknown');
+            setProfilePicUrl(userDoc.profilePicUrl || null);
         } catch (error) {
             console.error("Error fetching user profile: ", error);
         }
-    }
+    };
+
+    // image and updloa
+    const handlePickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 1,
+        });
+
+        const imageUri = result.assets ? result.assets[0].uri : result.uri;
+
+        if (!result.cancelled && imageUri) {
+            setUploading(true);
+            // Prepare FormData for REST API upload
+            const fileId = ID.unique();
+            const formData = new FormData();
+            formData.append('fileId', fileId);
+            formData.append('file', {
+                uri: imageUri,
+                name: 'profile.jpg',
+                type: 'image/jpeg',
+            });
+
+            try {
+                // Delete old profile picture if it exists
+                if (profilePicUrl) {
+                    // Extract file ID from previous URL
+                    const match = profilePicUrl.match(/\/files\/(.*?)\//);
+                    const oldFileId = match ? match[1] : null;
+                    if (oldFileId) {
+                        try {
+                            await storage.deleteFile('pfps', oldFileId);
+                            console.log('Deleted old profile picture:', oldFileId);
+                        } catch (err) {
+                            console.warn('Failed to delete old profile picture:', err);
+                        }
+                    }
+                }
+
+                const response = await fetch(process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT + '/storage/buckets/pfps/files', {
+                    method: 'POST',
+                    headers: {
+                        'X-Appwrite-Project': process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
+                    },
+                    body: formData,
+                });
+                const data = await response.json();
+                console.log('Upload response:', data);
+                if (data && data.$id) {
+                    // Get public URL for the uploaded image
+                    const fileUrl = `${process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/pfps/files/${data.$id}/preview?project=68aa58e0000eaf3801dc`;
+                    // update user doc with new profile pic url
+                    await databases.updateDocument(
+                        "main",
+                        "users",
+                        userId,
+                        { profilePicUrl: fileUrl }
+                    );
+                    setProfilePicUrl(fileUrl);
+                } else {
+                    Alert.alert("Upload Error", "Could not upload image.");
+                }
+            } catch (error) {
+                Alert.alert("Upload Error", "Could not upload image.");
+                console.error("Error uploading profile picture: ", error);
+            }
+            setUploading(false);
+        } else {
+            console.log("No image selected or URI not found.");
+        }
+    };
+
 
     useEffect(() => {
         // set profile at the start
@@ -101,11 +180,21 @@ export default function Profile({ route, navigation }) {
 
                 <View style={styles.profileCard}>
                     <View style={styles.avatarSection}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
-                            </Text>
-                        </View>
+                        <Pressable onPress={isOwnProfile ? handlePickImage : null}>
+                            {uploading ? (
+                                <View style={styles.avatar}>
+                                    <ActivityIndicator color={COLORS.textMain} />
+                                </View>
+                            ) : profilePicUrl ? (
+                                <Image source={{ uri: profilePicUrl }} style={styles.avatarImage} />
+                            ) : (
+                                <View style={styles.avatar}>
+                                    <Text style={styles.avatarText}>
+                                        {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
                         <Text style={styles.email}>{email}</Text>
                     </View>
 
@@ -269,6 +358,13 @@ const createStyles = (COLORS) => StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
+    },
+    avatarImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        resizeMode: 'cover',
+        marginBottom: 12,
     },
     avatarText: {
         fontSize: 32,
