@@ -158,7 +158,7 @@ function LogoutButton({ COLORS, styles, navigation, checkSession }) {
 
 function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
   const [chatrooms, setChatrooms] = useState([]);
-  const [usernames, setUsernames] = useState({});
+  const [users, setUsers] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
@@ -185,24 +185,30 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
         // convert set to array
         const allUserIds = Array.from(participantIds);
         // fetch each user's displayName if not already loaded
-        const newUsernames = { ...usernames };
+        const newUsers = { ...users };
         await Promise.all(
           allUserIds.map(async (userId) => {
-            if (!newUsernames[userId]) {
+            if (!newUsers[userId]) {
               try {
                 const userDoc = await databases.getDocument(
                   "main",
                   "users",
                   userId
                 );
-                newUsernames[userId] = userDoc.displayName || "Unknown User";
+                newUsers[userId] = {
+                  displayName: userDoc.displayName || "Unknown User",
+                  profilePicUrl: userDoc.profilePicUrl || null
+                };
               } catch {
-                newUsernames[userId] = "Unknown User";
+                newUsers[userId] = {
+                  displayName: "Unknown User",
+                  profilePicUrl: null
+                };
               }
             }
           })
         );
-        setUsernames(newUsernames);
+        setUsers(newUsers);
       } catch (error) {
         console.error("Error fetching chatrooms:", error);
       }
@@ -219,8 +225,9 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
     navigation.navigate('ChatRoom', {
       chatroomId: chatroom.$id,
       chatroomName: chatroom.chatName,
-      chatroomParticipants: chatroom.participants.filter(id => id !== currentUserId)
-        .map(id => usernames[id] || "Loading...").join(', ')
+      users: chatroom.participants.filter(id => id !== currentUserId)
+        .map(id => users[id] || { displayName: "Unknown User", profilePicUrl: null})
+
     });
   };
 
@@ -240,20 +247,55 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
             onLongPress={e => {
               const x = e.nativeEvent.pageX;
               const y = e.nativeEvent.pageY;
-              onLongPressChatroom({ ...room, usernames }, x, y);
+              onLongPressChatroom({ ...room, users }, x, y);
             }}
           >
             <Text style={styles.chatName}>{room.chatName || "Unnamed Chat"}</Text>
-            <Text style={styles.participants}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               {room.participants
                 .filter(id => id !== currentUserId)
-                .map((id, i, arr) => (
-                  <Text key={id} style={styles.participantName}>
-                    {usernames[id] || "Loading..."}
-                    {i < arr.length - 1 ? ', ' : ''}
-                  </Text>
-                ))}
-            </Text>
+                .map((id) => {
+                  const user = users[id];
+                  if (user && user.profilePicUrl) {
+                    return (
+                      <Image
+                        key={id}
+                        source={{ uri: user.profilePicUrl }}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          marginRight: 8,
+                          backgroundColor: COLORS.accent,
+                        }}
+                      />
+                    );
+                  } else {
+                    // Use first letter of displayName or email
+                    const letter = user && user.displayName
+                      ? user.displayName.charAt(0).toUpperCase()
+                      : (user && user.email ? user.email.charAt(0).toUpperCase() : '?');
+                    return (
+                      <View
+                        key={id}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          marginRight: 8,
+                          backgroundColor: COLORS.accent,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ color: COLORS.backgroundMain, fontWeight: 'bold', fontSize: 18 }}>
+                          {letter}
+                        </Text>
+                      </View>
+                    );
+                  }
+                })}
+            </View>
           </Pressable>
         ))
       )}

@@ -31,7 +31,7 @@ export default function ChatRoom({ route, navigation }) {
   const COLORS = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
   const styles = createStyles(COLORS);
 
-  const { chatroomId, chatroomName, chatroomParticipants } = route.params;
+  const { chatroomId, chatroomName, users } = route.params;
 
   const [contextMenu, setContextMenu] = useState({ visible: false, message: null, x: 0, y: 0 });
 
@@ -45,7 +45,7 @@ export default function ChatRoom({ route, navigation }) {
         <Text style={styles.headerTitle}>{chatroomName}</Text>
       </Animatable.View>
       <Animatable.View style={styles.roomInfo} animation="fadeIn">
-        <Text style={styles.roomIdText}><Text style={{fontWeight: 'bold'}}>Members: </Text>{chatroomParticipants}</Text>
+        <MembersAvatars users={users} COLORS={COLORS} />
       </Animatable.View>
       <Animatable.View style={styles.messagesContainer} animation="fadeIn">
         <ChatMessages COLORS={COLORS} styles={styles} roomId={chatroomId} onLongPressMessage={(message, x, y) => setContextMenu({ visible: true, message, x, y })} />
@@ -81,6 +81,53 @@ export default function ChatRoom({ route, navigation }) {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+function MembersAvatars({ users, COLORS }) {
+  if (!users || users.length === 0) return null;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      {users.map((user, idx) => {
+        if (user.profilePicUrl) {
+          return (
+            <Image
+              key={user.displayName + idx}
+              source={{ uri: user.profilePicUrl }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                marginRight: 8,
+                backgroundColor: COLORS.accent,
+              }}
+            />
+          );
+        } else {
+          const letter = user.displayName
+            ? user.displayName.charAt(0).toUpperCase()
+            : (user.email ? user.email.charAt(0).toUpperCase() : '?');
+          return (
+            <View
+              key={user.displayName + idx}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                marginRight: 8,
+                backgroundColor: COLORS.accent,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: COLORS.backgroundMain, fontWeight: 'bold', fontSize: 18 }}>
+                {letter}
+              </Text>
+            </View>
+          );
+        }
+      })}
+    </View>
   );
 }
 
