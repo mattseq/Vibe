@@ -45,10 +45,10 @@ export default function ChatRoom({ route, navigation }) {
         <Text style={styles.headerTitle}>{chatroomName}</Text>
       </Animatable.View>
       <Animatable.View style={styles.roomInfo} animation="fadeIn">
-        <MembersAvatars users={users} COLORS={COLORS} />
+        <MembersAvatars users={users} COLORS={COLORS} styles={styles} />
       </Animatable.View>
       <Animatable.View style={styles.messagesContainer} animation="fadeIn">
-        <ChatMessages COLORS={COLORS} styles={styles} roomId={chatroomId} onLongPressMessage={(message, x, y) => setContextMenu({ visible: true, message, x, y })} />
+        <ChatMessages COLORS={COLORS} styles={styles} roomId={chatroomId} users={users} onLongPressMessage={(message, x, y) => setContextMenu({ visible: true, message, x, y })} />
       </Animatable.View>
       <Animatable.View style={styles.gifsContainer} animation="fadeIn">
         <Gifs COLORS={COLORS} styles={styles} currentRoomId={chatroomId} />
@@ -84,23 +84,17 @@ export default function ChatRoom({ route, navigation }) {
   );
 }
 
-function MembersAvatars({ users, COLORS }) {
+function MembersAvatars({ COLORS, styles, users,  }) {
   if (!users || users.length === 0) return null;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {users.map((user, idx) => {
+      {Object.values(users).map((user, idx) => {
         if (user.profilePicUrl) {
           return (
             <Image
               key={user.displayName + idx}
               source={{ uri: user.profilePicUrl }}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                marginRight: 8,
-                backgroundColor: COLORS.accent,
-              }}
+              style={styles.avatarImage}
             />
           );
         } else {
@@ -110,15 +104,7 @@ function MembersAvatars({ users, COLORS }) {
           return (
             <View
               key={user.displayName + idx}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                marginRight: 8,
-                backgroundColor: COLORS.accent,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
+              style={styles.avatarFiller}
             >
               <Text style={{ color: COLORS.backgroundMain, fontWeight: 'bold', fontSize: 18 }}>
                 {letter}
@@ -131,7 +117,7 @@ function MembersAvatars({ users, COLORS }) {
   );
 }
 
-function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
+function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
   const [messages, setMessages] = useState([]);
   const [names, setNames] = useState({});
   const flatListRef = useRef(null);
@@ -146,11 +132,7 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
           Query.orderAsc("timestamp")
         ]
       );
-      const msgs = response.documents;
-      setMessages(msgs);
-      // get all unique senderIds
-      const senderIds = [...new Set(msgs.map(m => m.senderId).filter(Boolean))];
-      getDisplayNames(senderIds).then(setNames);
+      setMessages(response.documents);
     } catch (error) {
       console.error("Error fetching messages:", error);
     }
@@ -210,7 +192,24 @@ function ChatMessages({ COLORS, styles, roomId, onLongPressMessage }) {
             onLongPressMessage({ ...item, id: item.$id }, x, y);
           }}
         >
-          <Text style={styles.senderName}>{names[item.senderId] || "Unknown User"}</Text>
+          <View style={styles.senderTitle}>
+            <Text style={styles.senderName}>{users[item.senderId].displayName || "Unknown User"}</Text>
+            {users[item.senderId].profilePicUrl != null ? (
+              <Image
+                key={users[item.senderId].displayName}
+                source={{ uri: users[item.senderId].profilePicUrl }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatarFiller}>
+                <Text  style={{ color: COLORS.backgroundMain, fontWeight: 'bold', fontSize: 18 }}>
+                  {users[item.senderId].displayName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          
           {item.gifUrl ? (
             <Image source={{ uri: item.gifUrl }} style={styles.gifMessage} />
           ) : null}
@@ -556,6 +555,13 @@ const createStyles = (COLORS) => StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: COLORS.accentBlue,
   },
+  senderTitle: {
+    marginBottom: 4,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   senderName: {
     fontWeight: 'bold',
     marginBottom: 4,
@@ -650,4 +656,24 @@ const createStyles = (COLORS) => StyleSheet.create({
     color: COLORS.textMain,
     fontSize: 16,
   },
+  avatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    backgroundColor: COLORS.accent,
+    borderWidth: 2,
+    borderColor: COLORS.border
+  },
+  avatarFiller: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.border
+  }
 });

@@ -197,7 +197,7 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
                 );
                 newUsers[userId] = {
                   displayName: userDoc.displayName || "Unknown User",
-                  profilePicUrl: userDoc.profilePicUrl || null
+                  profilePicUrl: userDoc.profilePicUrl
                 };
               } catch {
                 newUsers[userId] = {
@@ -225,9 +225,7 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
     navigation.navigate('ChatRoom', {
       chatroomId: chatroom.$id,
       chatroomName: chatroom.chatName,
-      users: chatroom.participants.filter(id => id !== currentUserId)
-        .map(id => users[id] || { displayName: "Unknown User", profilePicUrl: null})
-
+      users: users
     });
   };
 
@@ -261,13 +259,7 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
                       <Image
                         key={id}
                         source={{ uri: user.profilePicUrl }}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          marginRight: 8,
-                          backgroundColor: COLORS.accent,
-                        }}
+                        style={styles.avatarImage}
                       />
                     );
                   } else {
@@ -278,15 +270,7 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
                     return (
                       <View
                         key={id}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          marginRight: 8,
-                          backgroundColor: COLORS.accent,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        }}
+                        style={styles.avatarFiller}
                       >
                         <Text style={{ color: COLORS.backgroundMain, fontWeight: 'bold', fontSize: 18 }}>
                           {letter}
@@ -782,4 +766,24 @@ const createStyles = (COLORS) => StyleSheet.create({
     justifyContent: 'center',
     marginTop: 10,
   },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+    backgroundColor: COLORS.accent,
+    borderWidth: 2,
+    borderColor: COLORS.border
+  },
+  avatarFiller: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.border
+  }
 });
