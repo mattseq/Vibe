@@ -219,26 +219,6 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
   );
 }
 
-async function getDisplayNames(userIds) {
-  const ids = Array.isArray(userIds) ? userIds : [userIds];
-  const results = {};
-  await Promise.all(
-    ids.map(async (userId) => {
-      try {
-        const userDoc = await databases.getDocument(
-          "main",
-          "users",
-          userId
-        );
-        results[userId] = userDoc.displayName || "Unknown User";
-      } catch {
-        results[userId] = "Unknown User";
-      }
-    })
-  );
-  return results;
-}
-
 function ContextMenu({ COLORS, styles, visible, x, y, onClose, onViewSenderProfile, onDelete }) {
   if (!visible) return null;
   return (
