@@ -145,9 +145,9 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
     fetchMessages();
 
     // subscribe for realtime updates
-    const unsubscribe = client.subscribe('databases.main.collections.messages.documents', response => {
-      // Log when a new file is uploaded
+    const unsubscribe = client.subscribe('databases.main.tables.messages.rows', response => {
       console.log(response.payload);
+      // fetch messages again if in the same room
       if (response.payload.roomId === roomId) {
         fetchMessages();
       }
