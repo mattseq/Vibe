@@ -1,7 +1,7 @@
 import { React, useEffect, useRef, useState, useContext } from "react";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { client, account, databases, functions } from "../appwrite";
-import { Query } from "appwrite";
+import { Query } from "react-native-appwrite";
 import Constants from 'expo-constants';
 
 import { ThemeContext } from '../context/ThemeContext';
@@ -145,7 +145,8 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
     fetchMessages();
 
     // subscribe for realtime updates
-    const unsubscribe = client.subscribe('databases.main.tables.messages.rows', response => {
+    console.log("Subscribing to messages in room:", roomId);
+    const unsubscribe = client.subscribe(['databases.main.tables.messages.rows'], response => {
       console.log(response.payload);
       // fetch messages again if in the same room
       if (response.payload.roomId === roomId) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { client, account, databases } from "../appwrite";
-import { Permission, Role } from "appwrite";
+import { Permission, Role } from "react-native-appwrite";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, ActivityIndicator, Alert } from 'react-native';
 import * as Animatable from 'react-native-animatable'
 
@@ -24,7 +24,9 @@ export default function Login({ navigation, route }) {
   const handleLogin = async () => {
     setError("");
 
-    await client.ping(); // ping bc idk
+    console.log("Logging in with", email);
+
+    // await client.ping(); // ping bc idk
     try {
       await account.createEmailPasswordSession(email, password);
       // no email verification logic here yet

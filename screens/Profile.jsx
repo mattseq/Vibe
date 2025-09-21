@@ -4,7 +4,7 @@ import { Image, ActivityIndicator, Alert } from 'react-native';
 import { Text, View, SafeAreaView, StyleSheet, TextInput, Pressable, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { account, databases, storage } from "../appwrite";
-import { ID } from 'appwrite';
+import { ID } from 'react-native-appwrite';
 
 import { ThemeContext } from '../context/ThemeContext';
 import { LIGHT_COLORS, DARK_COLORS } from '../constants/colors.js';

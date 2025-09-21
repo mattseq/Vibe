@@ -1,6 +1,6 @@
 import { React, useEffect, useRef, useState, useContext} from "react";
 import { account, databases } from "../appwrite";
-import { Query, Permission, Role } from "appwrite";
+import { Query, Permission, Role } from "react-native-appwrite";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { FontAwesome } from "@expo/vector-icons";
 import { ThemeContext } from '../context/ThemeContext';
@@ -334,7 +334,7 @@ function CreateChatModal({ COLORS, styles, visible, onClose, editMode, chatroom,
           "main",
           "users",
           [
-            Query.startsWith("displayName", participantQuery)
+            Query.startsWith("displayName", participantQuery || '')
           ]
         );
         if (!isMounted) return;
