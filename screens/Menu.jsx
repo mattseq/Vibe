@@ -1,5 +1,5 @@
 import { React, useEffect, useRef, useState, useContext} from "react";
-import { account, databases } from "../appwrite";
+import { client, account, databases } from "../appwrite";
 import { Query, Permission, Role } from "react-native-appwrite";
 import { StyleSheet, Text, View, TextInput, Image, ScrollView, Button, Pressable, SafeAreaView, StatusBar, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { FontAwesome } from "@expo/vector-icons";
@@ -163,6 +163,7 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
 
   useEffect(() => {
     let isMounted = true;
+    let unsubscribe = null;
     async function fetchRooms() {
       try {
         const user = await account.get();
@@ -214,10 +215,17 @@ function ChatroomList({ COLORS, styles, navigation, onLongPressChatroom }) {
       }
     }
     fetchRooms();
-    const interval = setInterval(fetchRooms, 3000);
+
+    // Subscribe to realtime chatroom changes
+    const channels = ["databases.main.tables.chatrooms.rows.*.create", "databases.main.tables.chatrooms.rows.*.update", "databases.main.tables.chatrooms.rows.*.delete"];
+    unsubscribe = client.subscribe(channels, (response) => {
+      // Only refetch if relevant event
+      fetchRooms();
+    });
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      unsubscribe();
     };
   }, []);
 

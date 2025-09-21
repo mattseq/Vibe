@@ -129,7 +129,8 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
         "messages",
         [
           Query.equal("roomId", roomId),
-          Query.orderAsc("timestamp")
+          Query.orderAsc("timestamp"),
+          Query.limit(50)
         ]
       );
       setMessages(response.documents);
@@ -137,6 +138,13 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
       console.error("Error fetching messages:", error);
     }
   }
+
+  // Expose fetchMessages to parent via ref for manual refresh
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window._refreshMessages = fetchMessages;
+    }
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -146,11 +154,13 @@ function ChatMessages({ COLORS, styles, roomId, users, onLongPressMessage }) {
 
     // subscribe for realtime updates
     console.log("Subscribing to messages in room:", roomId);
-    const unsubscribe = client.subscribe(['databases.main.tables.messages.rows'], response => {
+    const channel = "databases.main.tables.messages.rows.*.create";
+    const unsubscribe = client.subscribe(channel, response => {
       console.log(response.payload);
       // fetch messages again if in the same room
       if (response.payload.roomId === roomId) {
         fetchMessages();
+        console.log("Fetched messages due to realtime update");
       }
     });
 
@@ -357,6 +367,10 @@ function Gifs({ COLORS, styles, currentRoomId }) {
           timestamp: new Date().toISOString()
         }
       );
+      // Manually refresh messages after sending
+      if (typeof window !== 'undefined' && window._refreshMessages) {
+        window._refreshMessages();
+      }
     } catch (error) {
       console.error("Error sending GIF message", error);
     }
