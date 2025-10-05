@@ -3,13 +3,13 @@ import Constants from 'expo-constants';
 
 const client = new Client();
 
-const appwriteEnv = Constants.expoConfig.extra.appwrite
+// Get config from expo config or environment variables
+const config = Constants.expoConfig?.extra?.appwrite || {};
 
 client
-  .setEndpoint(process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT) // Your Appwrite API endpoint
-  .setProject(process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID) // Your project ID from Appwrite console
-  .setDevKey(process.env.EXPO_PUBLIC_APPWRITE_DEV_KEY); // Your secret API key from Appwrite console
-  // Services
+  .setEndpoint(config.endpoint || process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT) // Your Appwrite API endpoint
+  .setProject(config.projectId || process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID); // Your project ID from Appwrite console
+// Services
 const account = new Account(client);
 const databases = new Databases(client);
 const storage = new Storage(client);

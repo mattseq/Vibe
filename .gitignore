@@ -38,3 +38,7 @@ appwrite.config.json
 
 # typescript
 *.tsbuildinfo
+
+google-services.json
+
+android

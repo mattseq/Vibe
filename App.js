@@ -21,8 +21,9 @@ export default function App() {
   const checkSession = async () => {
     try {
       const user = await account.get();
-      setUser(user.status ? user : null);
-    } catch {
+      setUser(user && user.$id ? user : null);
+    } catch (error) {
+      console.log('No active session:', error.message);
       setUser(null);
     } finally {
       setLoading(false);
